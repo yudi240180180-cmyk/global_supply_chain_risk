@@ -33,6 +33,11 @@ return [
             'bot_user_oauth_token' => env('SLACK_BOT_USER_OAUTH_TOKEN'),
             'channel' => env('SLACK_BOT_USER_DEFAULT_CHANNEL'),
         ],
+        'restcountries' => [
+    'key' => env('RESTCOUNTRIES_API_KEY'),
+    'url' => env('RESTCOUNTRIES_URL'),
+],
     ],
 
 ];
+
