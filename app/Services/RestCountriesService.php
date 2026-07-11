@@ -42,9 +42,11 @@ class RestCountriesService
             $objects = $response->json('data.objects') ?? [];
 
             foreach ($objects as $item) {
-                $this->saveCountry($item);
-                $totalSynced++;
-            }
+    $saved = $this->saveCountry($item);
+    if ($saved) {
+        $totalSynced++;
+    }
+}
 
             $offset += $limit;
 
@@ -56,26 +58,34 @@ class RestCountriesService
     /**
      * Simpan 1 negara ke database (insert kalau baru, update kalau sudah ada).
      */
-    protected function saveCountry(array $item): Country
-    {
-        $currencies = $item['currencies'] ?? [];
-        $currencyCode = array_key_first($currencies);
-        $currencyName = $currencyCode ? ($currencies[$currencyCode]['name'] ?? null) : null;
+    protected function saveCountry(array $item): ?Country
+{
+    $code = $item['codes']['alpha_3'] ?? null;
 
-        return Country::updateOrCreate(
-            ['code' => $item['codes']['alpha_3'] ?? null],
-            [
-                'name' => $item['names']['common'] ?? 'Unknown',
-                'region' => $item['region'] ?? null,
-                'subregion' => $item['subregion'] ?? null,
-                'currency_code' => $currencyCode,
-                'currency_name' => $currencyName,
-                'capital' => $item['capitals'][0]['name'] ?? null,
-                'latitude' => $item['coordinates']['lat'] ?? null,
-                'longitude' => $item['coordinates']['lng'] ?? null,
-                'languages' => $item['languages'] ?? [],
-                'flag_url' => $item['flag']['url_svg'] ?? null,
-            ]
-        );
+    // Skip kalau tidak ada kode negara, supaya tidak tabrakan/tertimpa
+    if (empty($code)) {
+        Log::warning('Skip negara tanpa kode: ' . ($item['names']['common'] ?? 'unknown'));
+        return null;
     }
+
+    $currencies = $item['currencies'] ?? [];
+    $currencyCode = array_key_first($currencies);
+    $currencyName = $currencyCode ? ($currencies[$currencyCode]['name'] ?? null) : null;
+
+    return Country::updateOrCreate(
+        ['code' => $code],
+        [
+            'name' => $item['names']['common'] ?? 'Unknown',
+            'region' => $item['region'] ?? null,
+            'subregion' => $item['subregion'] ?? null,
+            'currency_code' => $currencyCode,
+            'currency_name' => $currencyName,
+            'capital' => $item['capitals'][0]['name'] ?? null,
+            'latitude' => $item['coordinates']['lat'] ?? null,
+            'longitude' => $item['coordinates']['lng'] ?? null,
+            'languages' => $item['languages'] ?? [],
+            'flag_url' => $item['flag']['url_svg'] ?? null,
+        ]
+    );
+}
 }
