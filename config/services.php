@@ -33,11 +33,29 @@ return [
             'bot_user_oauth_token' => env('SLACK_BOT_USER_OAUTH_TOKEN'),
             'channel' => env('SLACK_BOT_USER_DEFAULT_CHANNEL'),
         ],
-        'restcountries' => [
-    'key' => env('RESTCOUNTRIES_API_KEY'),
-    'url' => env('RESTCOUNTRIES_URL'),
-],
+    ],
+
+    'restcountries' => [
+        'key' => env('RESTCOUNTRIES_API_KEY'),
+        'url' => env('RESTCOUNTRIES_URL'),
+    ],
+
+    'worldbank' => [
+        'url' => env('WORLDBANK_URL'),
+    ],
+
+    'openmeteo' => [
+        'url' => env('OPENMETEO_URL'),
+    ],
+
+    'exchangerate' => [
+        'key' => env('EXCHANGERATE_API_KEY'),
+        'url' => env('EXCHANGERATE_URL'),
+    ],
+
+    'gnews' => [
+        'key' => env('GNEWS_API_KEY'),
+        'url' => env('GNEWS_URL'),
     ],
 
 ];
-
