@@ -6,6 +6,8 @@ use Illuminate\Database\Eloquent\Model;
 
 class ExchangeRateHistory extends Model
 {
+    protected $table = 'exchange_rate_history';
+
     protected $fillable = [
         'currency_code',
         'rate_to_usd',
