@@ -6,6 +6,8 @@ use Illuminate\Database\Eloquent\Model;
 
 class CountryEconomicsHistory extends Model
 {
+    protected $table = 'country_economics_history';
+
     protected $fillable = [
         'country_id',
         'gdp',
