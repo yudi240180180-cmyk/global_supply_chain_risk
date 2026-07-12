@@ -6,6 +6,8 @@ use Illuminate\Database\Eloquent\Model;
 
 class WeatherHistory extends Model
 {
+    protected $table = 'weather_history';
+
     protected $fillable = [
         'country_id',
         'temperature',
