@@ -67,10 +67,9 @@ class RestCountriesService
         Log::warning('Skip negara tanpa kode: ' . ($item['names']['common'] ?? 'unknown'));
         return null;
     }
-
-    $currencies = $item['currencies'] ?? [];
-    $currencyCode = array_key_first($currencies);
-    $currencyName = $currencyCode ? ($currencies[$currencyCode]['name'] ?? null) : null;
+$currencies = $item['currencies'] ?? [];
+    $currencyCode = $currencies[0]['code'] ?? null;
+    $currencyName = $currencies[0]['name'] ?? null;
 
     return Country::updateOrCreate(
         ['code' => $code],
