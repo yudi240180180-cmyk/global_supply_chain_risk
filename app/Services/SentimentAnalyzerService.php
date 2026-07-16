@@ -2,10 +2,10 @@
 
 namespace App\Services;
 
+use App\Models\NegativeWord;
 use App\Models\NewsArticle;
 use App\Models\NewsSentiment;
 use App\Models\PositiveWord;
-use App\Models\NegativeWord;
 use Illuminate\Support\Str;
 
 class SentimentAnalyzerService
@@ -15,14 +15,10 @@ class SentimentAnalyzerService
 
     public function __construct()
     {
-        // Load kamus kata sekali saja ke memory (bukan query berulang tiap analisis)
         $this->positiveWords = PositiveWord::pluck('word')->map(fn ($w) => strtolower($w))->toArray();
         $this->negativeWords = NegativeWord::pluck('word')->map(fn ($w) => strtolower($w))->toArray();
     }
 
-    /**
-     * Analisis semua berita yang BELUM punya sentiment, simpan hasilnya.
-     */
     public function analyzeAllPending(): int
     {
         $articles = NewsArticle::whereDoesntHave('sentiment')->get();
@@ -46,13 +42,8 @@ class SentimentAnalyzerService
         return $totalAnalyzed;
     }
 
-    /**
-     * Logika inti: hitung kata positif vs negatif dalam teks.
-     * INI BAGIAN YANG BISA/HARUS KAMU MODIFIKASI biar beda dari mahasiswa lain.
-     */
     public function analyzeText(string $text): array
     {
-        // Bersihkan teks: lowercase, hilangkan tanda baca, pecah jadi kata per kata
         $cleaned = Str::lower($text);
         $cleaned = preg_replace('/[^\w\s]/', ' ', $cleaned);
         $words = preg_split('/\s+/', trim($cleaned));
@@ -69,13 +60,11 @@ class SentimentAnalyzerService
             }
         }
 
-        // Skor -1 (sangat negatif) sampai +1 (sangat positif)
         $total = $positiveCount + $negativeCount;
         $score = $total > 0
             ? round(($positiveCount - $negativeCount) / $total, 2)
             : 0;
 
-        // Tentukan label — threshold ini contoh, bebas kamu ubah sendiri
         if ($score > 0.2) {
             $label = 'Positive';
         } elseif ($score < -0.2) {
