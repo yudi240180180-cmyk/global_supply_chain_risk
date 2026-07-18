@@ -163,14 +163,14 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '© OpenStreetMap', maxZoom: 18
 }).addTo(weatherMap);
 
-const wData = {{ Js::from($countries->filter(fn($c) => $c->latitude && $c->longitude)->map(fn($c) => [
-    'name' => $c->name, 'lat'  => $c->latitude,  'lng'  => $c->longitude,
-    'temp' => $c->latestWeather?->temperature,
-    'wind' => $c->latestWeather?->wind_speed,
-    'rain' => $c->latestWeather?->rainfall,
-    'storm'=> $c->latestWeather?->storm_risk ?? 0,
+const wData = {!! Js::from($countries->filter(fn($c) => $c->latitude && $c->longitude)->map(fn($c) => [
+    'name' => $c->name, 'lat'  => (float)$c->latitude,  'lng'  => (float)$c->longitude,
+    'temp' => $c->latestWeather?->temperature !== null ? (float)$c->latestWeather->temperature : null,
+    'wind' => $c->latestWeather?->wind_speed !== null ? (float)$c->latestWeather->wind_speed : null,
+    'rain' => $c->latestWeather?->rainfall !== null ? (float)$c->latestWeather->rainfall : null,
+    'storm'=> (float)($c->latestWeather?->storm_risk ?? 0),
     'cond' => $c->latestWeather?->weather_condition ?? 'N/A',
-])->values()) }};
+])->values()) !!};
 
 wData.forEach(function(c) {
     const color = c.storm >= 60 ? '#ef4444' : (c.storm >= 30 ? '#f59e0b' : '#22c55e');

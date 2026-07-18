@@ -121,15 +121,25 @@ async function runComparison() {
     document.getElementById('loadingState').classList.remove('hidden');
 
     try {
-        const res  = await fetch(`/api/compare?ids=${a},${b}`);
+        const res  = await fetch(`/api/compare?ids=${a},${b}`, {
+            headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
+        });
+        if (!res.ok) {
+            const text = await res.text();
+            throw new Error(`HTTP ${res.status}: ${text.substring(0, 200)}`);
+        }
         const data = await res.json();
-        if (!Array.isArray(data) || data.length < 2) throw new Error('Incomplete data');
+        if (!Array.isArray(data) || data.length < 1) throw new Error('No data returned');
 
-        renderComparison(data[0], data[1]);
+        renderComparison(data[0], data[1] ?? data[0]);
     } catch(e) {
+        console.error('Compare error:', e);
         document.getElementById('loadingState').classList.add('hidden');
         document.getElementById('emptyState').classList.remove('hidden');
-        document.getElementById('emptyState').innerHTML = `<div class="text-red-400 text-xl">Failed to load data. Please try again.</div>`;
+        document.getElementById('emptyState').innerHTML = `
+            <div class="text-red-400 text-xl mb-2">Failed to load comparison data.</div>
+            <div class="text-slate-500 text-sm font-mono">${e.message}</div>
+        `;
     }
 }
 

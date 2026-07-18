@@ -15,11 +15,16 @@ class CompareController extends Controller
      */
     public function compare(Request $request)
     {
-        $request->validate([
-            'ids' => 'required|string',
-        ]);
+        // Support both ?ids=1,2 and ?ids[]=1&ids[]=2
+        if (!$request->filled('ids')) {
+            return response()->json(['message' => 'ids parameter is required'], 422);
+        }
 
-        $ids = array_slice(explode(',', $request->ids), 0, 2);
+        $ids = array_filter(array_map('intval', array_slice(explode(',', $request->ids), 0, 2)));
+
+        if (count($ids) < 1) {
+            return response()->json(['message' => 'Please provide at least one valid country ID'], 422);
+        }
 
         $countries = Country::with([
             'latestRiskScore',
