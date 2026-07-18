@@ -9,6 +9,8 @@ class Country extends Model
     protected $fillable = [
         'name',
         'code',
+        'iso2',
+        'iso3',
         'region',
         'subregion',
         'currency_code',
@@ -18,6 +20,7 @@ class Country extends Model
         'longitude',
         'languages',
         'flag_url',
+        'population',
     ];
 
     protected $casts = [
@@ -37,5 +40,30 @@ class Country extends Model
     public function riskScores()
     {
         return $this->hasMany(RiskScore::class);
+    }
+
+    public function ports()
+    {
+        return $this->hasMany(Port::class);
+    }
+
+    public function watchlists()
+    {
+        return $this->hasMany(Watchlist::class);
+    }
+
+    public function latestRiskScore()
+    {
+        return $this->hasOne(RiskScore::class)->latestOfMany('calculated_at');
+    }
+
+    public function latestWeather()
+    {
+        return $this->hasOne(WeatherHistory::class)->latestOfMany('fetched_at');
+    }
+
+    public function latestEconomics()
+    {
+        return $this->hasOne(CountryEconomicsHistory::class)->latestOfMany('fetched_at');
     }
 }

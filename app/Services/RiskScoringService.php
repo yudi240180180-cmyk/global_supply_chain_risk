@@ -3,9 +3,10 @@
 namespace App\Services;
 
 use App\Models\Country;
+use App\Models\NewsSentiment;
 use App\Models\RiskScore;
 use App\Models\RiskWeight;
-use App\Models\NewsSentiment;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 
@@ -15,7 +16,15 @@ class RiskScoringService
 
     public function __construct()
     {
-        $this->weights = RiskWeight::pluck('weight_percentage', 'component_name')->toArray();
+        $this->weights = [];
+
+        try {
+            if (DB::getSchemaBuilder()->hasTable('risk_weights')) {
+                $this->weights = RiskWeight::pluck('weight_percentage', 'component_name')->toArray();
+            }
+        } catch (Throwable $e) {
+            Log::warning('Risk weights table unavailable: ' . $e->getMessage());
+        }
     }
 
     public function calculateAllCountries(): int

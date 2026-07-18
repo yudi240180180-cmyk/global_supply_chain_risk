@@ -38,15 +38,25 @@ class CountryController extends Controller
     public function show($id)
     {
         $country = Country::with([
-            'economics' => fn ($q) => $q->latest('fetched_at')->limit(1),
+            'economics'      => fn ($q) => $q->latest('fetched_at')->limit(1),
             'weatherHistory' => fn ($q) => $q->latest('fetched_at')->limit(1),
-            'riskScores' => fn ($q) => $q->latest('calculated_at')->limit(1),
+            'riskScores'     => fn ($q) => $q->latest('calculated_at')->limit(1),
         ])->find($id);
 
         if (! $country) {
             return response()->json(['message' => 'Country not found'], 404);
         }
 
-        return response()->json($country);
+        // Attach latest exchange rate
+        $exchangeRate = null;
+        if ($country->currency_code) {
+            $exchangeRate = \App\Models\ExchangeRateHistory::where('currency_code', $country->currency_code)
+                ->latest('fetched_at')
+                ->value('rate_to_usd');
+        }
+
+        return response()->json(array_merge($country->toArray(), [
+            'exchange_rate_usd' => $exchangeRate,
+        ]));
     }
 }

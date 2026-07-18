@@ -12,7 +12,7 @@ use Illuminate\Console\Command;
 
 class SyncAllData extends Command
 {
-    protected $signature = 'sync:all';
+    protected $signature = 'sync:all {--skip-external : Skip live external API calls and return immediately}';
     protected $description = 'Run the full real-data sync pipeline for countries, economics, weather, news, FX rates, and risk scores';
 
     public function handle(
@@ -23,6 +23,12 @@ class SyncAllData extends Command
         ExchangeRateService $exchangeRateService,
         RiskScoringService $riskScoringService,
     ): int {
+        if ($this->option('skip-external')) {
+            $this->info('Skipping live API sync for this run.');
+
+            return self::SUCCESS;
+        }
+
         $this->info('Starting full data sync pipeline...');
 
         $countries = $countriesService->syncAllCountries();
