@@ -108,7 +108,7 @@ const portIcon = L.divIcon({
     iconSize: [10, 10], iconAnchor: [5, 5],
 });
 
-const allPortData = @json($ports->map(fn($p) => [
+const allPortData = {{ Js::from($ports->map(fn($p) => [
     'id'      => $p->id,
     'name'    => $p->name,
     'locode'  => $p->locode,
@@ -118,7 +118,7 @@ const allPortData = @json($ports->map(fn($p) => [
     'type'    => $p->port_type ?? 'International',
     'status'  => $p->status ?? 'Operational',
     'out'     => $p->outflows ?? 0,
-])->values());
+])->values()) }};
 
 const layerMap = {};
 

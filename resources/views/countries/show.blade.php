@@ -275,6 +275,12 @@
 </div>
 @endsection
 
+@php
+    $exchangeLabels  = $exchangeHistory->map(fn($r) => $r->fetched_at?->format('d M'))->values();
+    $riskTrendLabels = $country->riskScores->reverse()->map(fn($r) => $r->calculated_at?->format('d M'))->values();
+    $riskTrendData   = $country->riskScores->reverse()->pluck('total_score')->values();
+@endphp
+
 @push('scripts')
 <script>
 const chartDefaults = {
@@ -310,7 +316,7 @@ new Chart(document.getElementById('gdpChart'), {
 new Chart(document.getElementById('exchangeChart'), {
     type: 'line',
     data: {
-        labels: @json($exchangeHistory->map(fn($r) => $r->fetched_at?->format('d M'))),
+        labels: @json($exchangeLabels),
         datasets: [{
             label: '{{ $country->currency_code }}/USD',
             data: @json($exchangeHistory->pluck('rate_to_usd')),
@@ -329,10 +335,10 @@ new Chart(document.getElementById('exchangeChart'), {
 new Chart(document.getElementById('riskTrendChart'), {
     type: 'line',
     data: {
-        labels: @json($country->riskScores->reverse()->map(fn($r) => $r->calculated_at?->format('d M'))->values()),
+        labels: @json($riskTrendLabels),
         datasets: [{
             label: 'Risk Score',
-            data: @json($country->riskScores->reverse()->pluck('total_score')->values()),
+            data: @json($riskTrendData),
             borderColor: '#ef4444',
             backgroundColor: 'rgba(239,68,68,0.1)',
             fill: true,
