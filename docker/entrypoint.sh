@@ -3,10 +3,61 @@ set -e
 
 echo "==> Starting Laravel deployment..."
 
-# Railway injects $PORT dynamically — update nginx to listen on it
+# Railway injects $PORT dynamically
 PORT=${PORT:-8080}
 echo "==> Configuring Nginx to listen on port $PORT..."
-sed -i "s/listen 8080;/listen $PORT;/" /etc/nginx/nginx.conf
+
+# Write nginx config with correct port
+cat > /etc/nginx/nginx.conf <<EOF
+user www-data;
+worker_processes auto;
+error_log /dev/stderr warn;
+pid /var/run/nginx.pid;
+
+events {
+    worker_connections 1024;
+}
+
+http {
+    include /etc/nginx/mime.types;
+    default_type application/octet-stream;
+    sendfile on;
+    keepalive_timeout 65;
+    client_max_body_size 50M;
+    access_log /dev/stdout;
+
+    server {
+        listen ${PORT};
+        server_name _;
+        root /var/www/html/public;
+        index index.php index.html;
+
+        gzip on;
+        gzip_types text/plain text/css application/json application/javascript text/xml application/xml;
+
+        location / {
+            try_files \$uri \$uri/ /index.php?\$query_string;
+        }
+
+        location ~ \.php$ {
+            fastcgi_pass 127.0.0.1:9000;
+            fastcgi_index index.php;
+            fastcgi_param SCRIPT_FILENAME \$realpath_root\$fastcgi_script_name;
+            include fastcgi_params;
+            fastcgi_read_timeout 300;
+        }
+
+        location ~ /\.ht {
+            deny all;
+        }
+
+        location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$ {
+            expires 1y;
+            add_header Cache-Control "public, immutable";
+        }
+    }
+}
+EOF
 
 # Generate app key if not set
 if [ -z "$APP_KEY" ]; then
@@ -24,11 +75,8 @@ php artisan view:cache
 echo "==> Running migrations..."
 php artisan migrate --force
 
-# Run seeders only on first deploy (optional - comment out if not needed)
-# php artisan db:seed --force
-
 # Set storage permissions
 chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
 
-echo "==> Starting services..."
+echo "==> Starting services on port ${PORT}..."
 exec /usr/bin/supervisord -c /etc/supervisord.conf
