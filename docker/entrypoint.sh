@@ -2,7 +2,8 @@
 
 set -e
 
-export PORT=${PORT:-8080}
+# Force port 3000 - Railway may inject PORT=5432 (postgres port) which breaks Nginx
+export PORT=3000
 echo "==> PORT = $PORT"
 
 # Write nginx config
