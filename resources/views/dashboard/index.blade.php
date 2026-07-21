@@ -66,7 +66,7 @@
 
             </div>
 
-            <div id="world-map"></div>
+            <div id="world-map" style="height: 480px; width: 100%;"></div>
 
         </div>
 
