@@ -35,7 +35,7 @@ RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
 # Install Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
-# Cache bust: 2026-07-21-v2
+# Cache bust: 2026-07-21-v3
 
 # Set working directory
 WORKDIR /var/www/html
