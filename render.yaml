@@ -1,0 +1,46 @@
+services:
+  - type: web
+    name: global-supply-chain-risk
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /
+    envVars:
+      - key: APP_NAME
+        value: "Global Supply Chain Risk Platform"
+      - key: APP_ENV
+        value: production
+      - key: APP_DEBUG
+        value: false
+      - key: APP_KEY
+        generateValue: true
+      - key: APP_URL
+        value: https://global-supply-chain-risk.onrender.com  # ganti dengan URL render kamu
+
+      - key: DB_CONNECTION
+        value: pgsql
+      - key: DB_URL
+        fromDatabase:
+          name: supply-chain-db
+          property: connectionString
+
+      - key: SESSION_DRIVER
+        value: database
+      - key: CACHE_STORE
+        value: database
+      - key: QUEUE_CONNECTION
+        value: database
+
+      - key: LOG_CHANNEL
+        value: stderr
+      - key: LOG_LEVEL
+        value: error
+
+      # Tambahkan API keys kamu di sini (atau set manual di Render dashboard)
+      # - key: NEWS_API_KEY
+      #   value: your_key_here
+
+databases:
+  - name: supply-chain-db
+    databaseName: supply_chain_risk
+    user: supply_chain_user
+    plan: free
