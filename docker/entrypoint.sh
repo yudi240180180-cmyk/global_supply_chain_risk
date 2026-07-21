@@ -1,13 +1,9 @@
 #!/bin/bash
-set -e
 
-echo "==> Starting Laravel deployment..."
-
-# Railway injects $PORT dynamically, default to 8080
+echo "==> Starting Laravel on port ${PORT:-8080}..."
 export PORT=${PORT:-8080}
-echo "==> Using port: $PORT"
 
-# Write nginx config with correct port
+# Write nginx config dynamically with correct port
 cat > /etc/nginx/nginx.conf <<NGINXCONF
 user www-data;
 worker_processes auto;
@@ -32,9 +28,6 @@ http {
         root /var/www/html/public;
         index index.php index.html;
 
-        gzip on;
-        gzip_types text/plain text/css application/json application/javascript text/xml application/xml;
-
         location / {
             try_files \$uri \$uri/ /index.php?\$query_string;
         }
@@ -50,37 +43,30 @@ http {
         location ~ /\.ht {
             deny all;
         }
-
-        location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$ {
-            expires 1y;
-            add_header Cache-Control "public, immutable";
-        }
     }
 }
 NGINXCONF
 
 echo "==> Nginx config written for port $PORT"
 
-# Laravel setup
-echo "==> Running Laravel setup..."
+# Clear Laravel caches
 php artisan config:clear
 php artisan config:cache
 php artisan route:cache
 php artisan view:cache
 
+# Run migrations (non-fatal)
 echo "==> Running migrations..."
-php artisan migrate --force || echo "WARNING: Migration failed, continuing anyway..."
+php artisan migrate --force && echo "Migrations done." || echo "WARNING: Migrations failed, check DB_URL."
 
-# Set storage permissions
-chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
+# Fix permissions
+chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache 2>/dev/null || true
 
 # Start PHP-FPM in background
 echo "==> Starting PHP-FPM..."
 php-fpm -D
-
-# Wait for PHP-FPM to be ready
 sleep 2
 
-# Start Nginx in foreground
+# Start Nginx in foreground (keeps container alive)
 echo "==> Starting Nginx on port $PORT..."
-nginx -g "daemon off;"
+exec nginx -g "daemon off;"
