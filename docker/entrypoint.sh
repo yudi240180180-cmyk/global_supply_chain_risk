@@ -58,7 +58,19 @@ php artisan route:cache || true
 php artisan view:cache || true
 
 # Migrations (non-fatal)
-php artisan migrate --force || echo "WARNING: migrate failed"
+echo "==> Running migrations..."
+php artisan migrate --force && echo "Migrations done." || echo "WARNING: migrate failed"
+
+# Seed database if users table is empty (first deploy)
+echo "==> Checking if seeding is needed..."
+USER_COUNT=$(php artisan tinker --execute="echo App\Models\User::count();" 2>/dev/null | tr -d '[:space:]' || echo "0")
+echo "==> Current user count: $USER_COUNT"
+if [ "$USER_COUNT" = "0" ]; then
+    echo "==> Seeding database for first time..."
+    php artisan db:seed --force && echo "Seeding done." || echo "WARNING: seeding failed"
+else
+    echo "==> Database already has users, skipping seed."
+fi
 
 # Permissions
 chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache 2>/dev/null || true
