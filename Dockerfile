@@ -61,6 +61,6 @@ COPY docker/supervisord.conf /etc/supervisord.conf
 COPY docker/entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
-EXPOSE 8080
+EXPOSE ${PORT:-8080}
 
 ENTRYPOINT ["/entrypoint.sh"]

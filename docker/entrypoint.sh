@@ -3,6 +3,11 @@ set -e
 
 echo "==> Starting Laravel deployment..."
 
+# Railway injects $PORT dynamically — update nginx to listen on it
+PORT=${PORT:-8080}
+echo "==> Configuring Nginx to listen on port $PORT..."
+sed -i "s/listen 8080;/listen $PORT;/" /etc/nginx/nginx.conf
+
 # Generate app key if not set
 if [ -z "$APP_KEY" ]; then
     echo "==> Generating APP_KEY..."
