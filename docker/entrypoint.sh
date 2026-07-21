@@ -1,9 +1,11 @@
 #!/bin/bash
 
-echo "==> Starting Laravel on port ${PORT:-8080}..."
-export PORT=${PORT:-8080}
+set -e
 
-# Write nginx config dynamically with correct port
+export PORT=${PORT:-8080}
+echo "==> PORT = $PORT"
+
+# Write nginx config
 cat > /etc/nginx/nginx.conf <<NGINXCONF
 user www-data;
 worker_processes auto;
@@ -47,26 +49,37 @@ http {
 }
 NGINXCONF
 
-echo "==> Nginx config written for port $PORT"
+echo "==> Nginx config written"
 
-# Clear Laravel caches
-php artisan config:clear
-php artisan config:cache
-php artisan route:cache
-php artisan view:cache
+# Laravel cache
+php artisan config:clear || true
+php artisan config:cache || true
+php artisan route:cache || true
+php artisan view:cache || true
 
-# Run migrations (non-fatal)
-echo "==> Running migrations..."
-php artisan migrate --force && echo "Migrations done." || echo "WARNING: Migrations failed, check DB_URL."
+# Migrations (non-fatal)
+php artisan migrate --force || echo "WARNING: migrate failed"
 
-# Fix permissions
+# Permissions
 chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache 2>/dev/null || true
 
-# Start PHP-FPM in background
+# Start PHP-FPM
 echo "==> Starting PHP-FPM..."
-php-fpm -D
-sleep 2
+/usr/local/sbin/php-fpm --nodaemonize &
+PHP_PID=$!
+echo "==> PHP-FPM PID: $PHP_PID"
 
-# Start Nginx in foreground (keeps container alive)
+# Wait for PHP-FPM socket
+sleep 3
+
+# Test PHP-FPM is running
+if kill -0 $PHP_PID 2>/dev/null; then
+    echo "==> PHP-FPM is running"
+else
+    echo "ERROR: PHP-FPM failed to start!"
+    exit 1
+fi
+
+# Start Nginx
 echo "==> Starting Nginx on port $PORT..."
 exec nginx -g "daemon off;"
