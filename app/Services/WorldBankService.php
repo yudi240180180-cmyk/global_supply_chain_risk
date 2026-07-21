@@ -42,9 +42,9 @@ public function syncAllCountries(bool $priorityOnly = false): int
     $countries = $query->get()->keyBy('code');
     $totalSynced = 0;
 
-    // Filter hanya yang belum disync
-    $alreadySynced = CountryEconomicsHistory::pluck('country_id')->toArray();
-    $countries = $countries->filter(fn($c) => !in_array($c->id, $alreadySynced) && !empty($c->code));
+    // Don't filter - always sync all countries
+    // $alreadySynced = CountryEconomicsHistory::pluck('country_id')->toArray();
+    // $countries = $countries->filter(fn($c) => !in_array($c->id, $alreadySynced) && !empty($c->code));
 
     if ($countries->isEmpty()) {
         return 0;
