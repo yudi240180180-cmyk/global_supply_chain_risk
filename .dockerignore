@@ -11,7 +11,6 @@ storage/framework/sessions/*
 storage/framework/views/*
 bootstrap/cache/*.php
 tests
-docker
 *.md
 .editorconfig
 .phpunit.result.cache
