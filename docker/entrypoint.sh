@@ -79,8 +79,14 @@ php artisan migrate --force || echo "Migrations done"
 (
     sleep 5
     echo "==> Running background seeding..."
-    php artisan db:seed --force || echo "Seeding complete"
-    php artisan sync:all --skip-external || echo "Sync complete"
+    php artisan db:seed --class=CountrySeeder --force || echo "CountrySeeder done"
+    php artisan db:seed --class=PortSeeder --force || echo "PortSeeder done"
+    php artisan db:seed --class=DatabaseSeeder --force || echo "DatabaseSeeder done"
+
+    echo "==> Running real data sync (countries, weather, economics, news, risk)..."
+    php artisan sync:all || echo "Sync complete"
+
+    echo "==> All seeding and sync complete"
 ) &
 
 # Supervisord
