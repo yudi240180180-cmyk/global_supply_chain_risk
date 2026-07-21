@@ -2,6 +2,9 @@
 
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Route;
+
+// Health check endpoint for Railway
+Route::get('/health', fn() => response('OK', 200));
 use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\CountryController;
 use App\Http\Controllers\Api\RiskController;
