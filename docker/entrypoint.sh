@@ -1,18 +1,18 @@
-#!/bin/sh
+#!/bin/bash
 set -e
 
 echo "==> Starting Laravel deployment..."
 
-# Railway injects $PORT dynamically
-PORT=${PORT:-8080}
-echo "==> Configuring Nginx to listen on port $PORT..."
+# Railway injects $PORT dynamically, default to 8080
+export PORT=${PORT:-8080}
+echo "==> Using port: $PORT"
 
 # Write nginx config with correct port
-cat > /etc/nginx/nginx.conf <<EOF
+cat > /etc/nginx/nginx.conf <<NGINXCONF
 user www-data;
 worker_processes auto;
 error_log /dev/stderr warn;
-pid /var/run/nginx.pid;
+pid /tmp/nginx.pid;
 
 events {
     worker_connections 1024;
@@ -57,26 +57,30 @@ http {
         }
     }
 }
-EOF
+NGINXCONF
 
-# Generate app key if not set
-if [ -z "$APP_KEY" ]; then
-    echo "==> Generating APP_KEY..."
-    php artisan key:generate --force
-fi
+echo "==> Nginx config written for port $PORT"
 
-# Clear and cache config
-echo "==> Caching configuration..."
+# Laravel setup
+echo "==> Running Laravel setup..."
+php artisan config:clear
 php artisan config:cache
 php artisan route:cache
 php artisan view:cache
 
-# Run migrations
 echo "==> Running migrations..."
 php artisan migrate --force
 
 # Set storage permissions
 chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
 
-echo "==> Starting services on port ${PORT}..."
-exec /usr/bin/supervisord -c /etc/supervisord.conf
+# Start PHP-FPM in background
+echo "==> Starting PHP-FPM..."
+php-fpm -D
+
+# Wait for PHP-FPM to be ready
+sleep 2
+
+# Start Nginx in foreground
+echo "==> Starting Nginx on port $PORT..."
+nginx -g "daemon off;"

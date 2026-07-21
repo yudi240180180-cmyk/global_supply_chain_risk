@@ -15,7 +15,8 @@ RUN apk add --no-cache \
     libzip-dev \
     oniguruma-dev \
     postgresql-dev \
-    supervisor
+    supervisor \
+    bash
 
 # Install PHP extensions
 RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
@@ -51,9 +52,6 @@ RUN chown -R www-data:www-data /var/www/html \
     && chmod -R 755 /var/www/html/storage \
     && chmod -R 755 /var/www/html/bootstrap/cache
 
-# Copy nginx config
-COPY docker/nginx.conf /etc/nginx/nginx.conf
-
 # Copy supervisor config
 COPY docker/supervisord.conf /etc/supervisord.conf
 
@@ -61,6 +59,6 @@ COPY docker/supervisord.conf /etc/supervisord.conf
 COPY docker/entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
-EXPOSE ${PORT:-8080}
+EXPOSE 8080
 
 ENTRYPOINT ["/entrypoint.sh"]
