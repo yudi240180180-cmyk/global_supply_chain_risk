@@ -50,9 +50,9 @@ http {
 }
 NGINXCONF
 
-echo "==> Nginx config written"
+echo "==> Nginx config written for port $PORT"
 
-# Laravel cache - clear dulu SEMUA cache sebelum rebuild
+# Laravel cache
 echo "==> Clearing all caches..."
 php artisan config:clear || true
 php artisan cache:clear || true
@@ -62,7 +62,6 @@ php artisan view:clear || true
 echo "==> DB_CONNECTION = $DB_CONNECTION"
 echo "==> DB_URL = $DB_URL"
 
-# Rebuild cache dengan env yang sudah benar
 php artisan config:cache || true
 php artisan route:cache || true
 php artisan view:cache || true
@@ -71,29 +70,56 @@ php artisan view:cache || true
 echo "==> Running migrations..."
 php artisan migrate --force && echo "Migrations done." || echo "WARNING: migrate failed"
 
-# NOTE: Seeding should be run manually via Railway Console after first deploy:
-# php artisan db:seed --force
-
 # Permissions
 chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache 2>/dev/null || true
 
-# Start PHP-FPM
-echo "==> Starting PHP-FPM..."
-/usr/local/sbin/php-fpm --nodaemonize &
-PHP_PID=$!
-echo "==> PHP-FPM PID: $PHP_PID"
+# Write supervisord config with correct port for nginx
+cat > /etc/supervisord.conf <<SUPCONF
+[supervisord]
+nodaemon=true
+user=root
+logfile=/dev/stdout
+logfile_maxbytes=0
+pidfile=/tmp/supervisord.pid
 
-# Wait for PHP-FPM socket
-sleep 3
+[program:php-fpm]
+command=/usr/local/sbin/php-fpm --nodaemonize
+autostart=true
+autorestart=true
+stderr_logfile=/dev/stderr
+stderr_logfile_maxbytes=0
+stdout_logfile=/dev/stdout
+stdout_logfile_maxbytes=0
 
-# Test PHP-FPM is running
-if kill -0 $PHP_PID 2>/dev/null; then
-    echo "==> PHP-FPM is running"
-else
-    echo "ERROR: PHP-FPM failed to start!"
-    exit 1
-fi
+[program:nginx]
+command=nginx -g "daemon off;"
+autostart=true
+autorestart=true
+stderr_logfile=/dev/stderr
+stderr_logfile_maxbytes=0
+stdout_logfile=/dev/stdout
+stdout_logfile_maxbytes=0
 
-# Start Nginx
-echo "==> Starting Nginx on port $PORT..."
-exec nginx -g "daemon off;"
+[program:scheduler]
+command=bash -c "while true; do php /var/www/html/artisan schedule:run >> /dev/stdout 2>&1; sleep 60; done"
+autostart=true
+autorestart=true
+stderr_logfile=/dev/stderr
+stderr_logfile_maxbytes=0
+stdout_logfile=/dev/stdout
+stdout_logfile_maxbytes=0
+user=www-data
+
+[program:queue-worker]
+command=php /var/www/html/artisan queue:work --sleep=3 --tries=3 --max-time=3600
+autostart=true
+autorestart=true
+stderr_logfile=/dev/stderr
+stderr_logfile_maxbytes=0
+stdout_logfile=/dev/stdout
+stdout_logfile_maxbytes=0
+user=www-data
+SUPCONF
+
+echo "==> Starting all services (nginx + php-fpm + scheduler + queue)..."
+exec /usr/bin/supervisord -c /etc/supervisord.conf
