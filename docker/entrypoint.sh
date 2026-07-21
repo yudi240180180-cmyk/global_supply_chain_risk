@@ -64,15 +64,17 @@ php artisan view:cache || true
 
 echo "==> Routes will be loaded dynamically (no route:cache in production)"
 
-# Migrate
+# Migrate database schema
 echo "==> Running migrations..."
 php artisan migrate --force || echo "Migrations done"
 
-echo "==> Seeding initial database..."
-php artisan db:seed --force || echo "Seeding completed or already present"
-
-echo "==> Auto-syncing platform intelligence..."
-php artisan sync:all --skip-external || echo "Initial sync completed"
+# Run background initial seed and sync so Nginx starts immediately (health check passes)
+(
+    sleep 5
+    echo "==> Running background seeding..."
+    php artisan db:seed --force || echo "Seeding complete"
+    php artisan sync:all --skip-external || echo "Sync complete"
+) &
 
 # Permissions
 chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache 2>/dev/null || true
