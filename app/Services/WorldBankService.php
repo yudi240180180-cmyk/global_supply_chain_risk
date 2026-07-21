@@ -20,22 +20,36 @@ class WorldBankService
         'imports' => 'NE.IMP.GNFS.CD',
     ];
 
+    // Top 50 most important countries for supply chain
+    protected array $priorityCountries = [
+        'CN', 'US', 'DE', 'JP', 'GB', 'FR', 'IN', 'IT', 'BR', 'CA',
+        'KR', 'AU', 'MX', 'ID', 'NL', 'SA', 'TR', 'CH', 'TW', 'PL',
+        'SE', 'BE', 'TH', 'NG', 'AT', 'NO', 'AE', 'SG', 'IL', 'MY',
+        'ZA', 'PH', 'EG', 'DK', 'HK', 'CL', 'CO', 'FI', 'BD', 'VN',
+        'RU', 'ES', 'PT', 'NZ', 'PK', 'IQ', 'QA', 'KW', 'OM', 'MM',
+    ];
+
     public function __construct()
     {
         $this->baseUrl = config('services.worldbank.url');
     }
-public function syncAllCountries(): int
+public function syncAllCountries(bool $priorityOnly = false): int
 {
-    $countries = Country::all();
+    $query = Country::query();
+
+    if ($priorityOnly) {
+        $query->whereIn('code', $this->priorityCountries);
+        $this->baseUrl = config('services.worldbank.url');
+    }
+
+    $countries = $query->get();
     $totalSynced = 0;
 
     foreach ($countries as $country) {
         if (empty($country->code)) {
-            Log::warning("Skip World Bank sync: {$country->name} tidak punya code.");
             continue;
         }
 
-        // Skip kalau negara ini sudah pernah berhasil disync sebelumnya
         $alreadySynced = CountryEconomicsHistory::where('country_id', $country->id)->exists();
         if ($alreadySynced) {
             continue;
@@ -62,8 +76,7 @@ public function syncAllCountries(): int
             continue;
         }
 
-        // Jeda kecil supaya tidak dianggap spam oleh World Bank API
-        usleep(300000); // 0.3 detik
+        usleep(100000); // 0.1 detik (lebih cepat dari 0.3)
     }
 
     return $totalSynced;
@@ -75,12 +88,12 @@ public function syncAllCountries(): int
         $year = null;
 
         foreach ($this->indicators as $key => $indicatorCode) {
-            $response = Http::timeout(20)
-    ->retry(2, 500)
-    ->get("{$this->baseUrl}/country/{$countryCode}/indicator/{$indicatorCode}", [
-        'format' => 'json',
-        'mrv' => 1,
-    ]);
+            $response = Http::timeout(5)
+                ->retry(1, 200)
+                ->get("{$this->baseUrl}/country/{$countryCode}/indicator/{$indicatorCode}", [
+                    'format' => 'json',
+                    'mrv' => 1,
+                ]);
 
             if (! $response->successful()) {
                 Log::warning("World Bank API gagal untuk {$countryCode} - {$indicatorCode}");

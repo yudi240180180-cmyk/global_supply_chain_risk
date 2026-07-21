@@ -7,28 +7,21 @@ use Illuminate\Console\Command;
 
 class SyncEconomics extends Command
 {
-    /**
-     * The name and signature of the console command.
-     *
-     * @var string
-     */
-    protected $signature = 'sync:economics';
+    protected $signature = 'sync:economics {--priority : Only sync top 50 important countries for speed}';
 
-    /**
-     * The console command description.
-     *
-     * @var string
-     */
     protected $description = 'Fetch dan simpan data GDP, inflasi, populasi dari World Bank API';
 
-    /**
-     * Execute the console command.
-     */
     public function handle(WorldBankService $service): int
     {
-        $this->info('Mengambil data ekonomi dari World Bank API (ini bisa makan waktu beberapa menit)...');
+        $priorityOnly = $this->option('priority');
 
-        $total = $service->syncAllCountries();
+        if ($priorityOnly) {
+            $this->info('Mengambil data ekonomi untuk 50 negara prioritas saja...');
+        } else {
+            $this->info('Mengambil data ekonomi dari World Bank API (ini bisa makan waktu beberapa menit)...');
+        }
+
+        $total = $service->syncAllCountries($priorityOnly);
 
         $this->info("Selesai. Total {$total} negara berhasil disimpan datanya.");
 
