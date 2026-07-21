@@ -35,6 +35,61 @@ Route::get('/health', function () {
 
     return response()->json($status);
 });
+
+// Force sync endpoint (admin only via secret key)
+Route::get('/force-sync/{secret}', function ($secret) {
+    if ($secret !== 'tugas-akhir-2026') {
+        abort(403, 'Invalid secret');
+    }
+    
+    set_time_limit(600);
+    ignore_user_abort(true);
+    
+    $log = [];
+    
+    try {
+        $log[] = '==> Seeding users...';
+        Artisan::call('db:seed', ['--class' => 'AdminUserSeeder', '--force' => true]);
+        Artisan::call('db:seed', ['--class' => 'ManagerUserSeeder', '--force' => true]);
+        $log[] = '✅ Users seeded';
+        
+        $log[] = '==> Syncing countries...';
+        Artisan::call('sync:countries');
+        $log[] = '✅ Countries: ' . \App\Models\Country::count();
+        
+        $log[] = '==> Syncing economics...';
+        Artisan::call('sync:economics');
+        $log[] = '✅ Economics synced';
+        
+        $log[] = '==> Syncing exchange rates...';
+        Artisan::call('sync:rates');
+        $log[] = '✅ Rates synced';
+        
+        $log[] = '==> Syncing news...';
+        Artisan::call('sync:news');
+        $log[] = '✅ News: ' . \App\Models\NewsArticle::count();
+        
+        $log[] = '==> Syncing weather...';
+        Artisan::call('sync:weather');
+        $log[] = '✅ Weather synced';
+        
+        $log[] = '==> Calculating risk scores...';
+        Artisan::call('calculate:risk');
+        $log[] = '✅ Risk scores: ' . \DB::table('risk_scores')->count();
+        
+        $log[] = '==> Syncing ports...';
+        Artisan::call('sync:all');
+        $log[] = '✅ Ports: ' . \App\Models\Port::count();
+        
+        $log[] = "\n" . '🎉 ALL DATA SYNCED SUCCESSFULLY!';
+        
+    } catch (\Exception $e) {
+        $log[] = '❌ ERROR: ' . $e->getMessage();
+    }
+    
+    return response('<pre>' . implode("\n", $log) . '</pre>')->header('Content-Type', 'text/html');
+});
+
 use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\CountryController;
 use App\Http\Controllers\Api\RiskController;
