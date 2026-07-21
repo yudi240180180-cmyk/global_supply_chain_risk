@@ -36,47 +36,79 @@ class WorldBankService
 public function syncAllCountries(bool $priorityOnly = false): int
 {
     $query = Country::query();
-
     if ($priorityOnly) {
         $query->whereIn('code', $this->priorityCountries);
-        $this->baseUrl = config('services.worldbank.url');
     }
-
-    $countries = $query->get();
+    $countries = $query->get()->keyBy('code');
     $totalSynced = 0;
 
-    foreach ($countries as $country) {
-        if (empty($country->code)) {
-            continue;
-        }
+    // Filter hanya yang belum disync
+    $alreadySynced = CountryEconomicsHistory::pluck('country_id')->toArray();
+    $countries = $countries->filter(fn($c) => !in_array($c->id, $alreadySynced) && !empty($c->code));
 
-        $alreadySynced = CountryEconomicsHistory::where('country_id', $country->id)->exists();
-        if ($alreadySynced) {
-            continue;
-        }
+    if ($countries->isEmpty()) {
+        return 0;
+    }
+
+    // Fetch per indikator untuk SEMUA negara sekaligus (batch request)
+    $allData = [];
+    foreach ($this->indicators as $key => $indicatorCode) {
+        $page = 1;
+        do {
+            try {
+                $response = Http::timeout(30)
+                    ->get("{$this->baseUrl}/country/all/indicator/{$indicatorCode}", [
+                        'format' => 'json',
+                        'mrv'    => 1,
+                        'per_page' => 300,
+                        'page'   => $page,
+                    ]);
+
+                if (!$response->successful()) break;
+
+                $json = $response->json();
+                $records = $json[1] ?? [];
+                $pages = $json[0]['pages'] ?? 1;
+
+                foreach ($records as $record) {
+                    $code = $record['countryiso3code'] ?? null;
+                    if (!$code || $record['value'] === null) continue;
+                    $allData[$code][$key] = $record['value'];
+                    if (empty($allData[$code]['year'])) {
+                        $allData[$code]['year'] = $record['date'] ?? null;
+                    }
+                }
+                $page++;
+            } catch (Throwable $e) {
+                Log::error("World Bank batch fetch gagal untuk {$indicatorCode}: " . $e->getMessage());
+                break;
+            }
+        } while ($page <= $pages);
+
+        sleep(1); // jeda antar indikator
+    }
+
+    // Simpan ke database
+    foreach ($countries as $code => $country) {
+        $data = $allData[$code] ?? null;
+        if (!$data) continue;
+        if (collect($data)->except('year')->every(fn($v) => $v === null)) continue;
 
         try {
-            $data = $this->fetchEconomicsForCountry($country->code);
-
-            if ($data) {
-                CountryEconomicsHistory::create([
-                    'country_id' => $country->id,
-                    'gdp' => $data['gdp'],
-                    'inflation' => $data['inflation'],
-                    'population' => $data['population'],
-                    'exports' => $data['exports'],
-                    'imports' => $data['imports'],
-                    'data_year' => $data['year'],
-                    'fetched_at' => now(),
-                ]);
-                $totalSynced++;
-            }
+            CountryEconomicsHistory::create([
+                'country_id' => $country->id,
+                'gdp'        => $data['gdp'] ?? null,
+                'inflation'  => $data['inflation'] ?? null,
+                'population' => $data['population'] ?? null,
+                'exports'    => $data['exports'] ?? null,
+                'imports'    => $data['imports'] ?? null,
+                'data_year'  => $data['year'] ?? null,
+                'fetched_at' => now(),
+            ]);
+            $totalSynced++;
         } catch (Throwable $e) {
-            Log::error("World Bank sync gagal untuk {$country->name} ({$country->code}): " . $e->getMessage());
-            continue;
+            Log::error("Gagal simpan ekonomi {$country->name}: " . $e->getMessage());
         }
-
-        usleep(100000); // 0.1 detik (lebih cepat dari 0.3)
     }
 
     return $totalSynced;
