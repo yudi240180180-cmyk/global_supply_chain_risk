@@ -25,7 +25,7 @@ Schedule::command('sync:economics')->weekly()->sundays()->at('02:00');
 Schedule::command('sync:countries')->weekly()->sundays()->at('01:00');
 
 // Calculate risk scores every 12 hours
-Schedule::command('calculate:risk-scores')->twiceDaily(1, 13);
+Schedule::command('calculate:risk')->twiceDaily(1, 13);
 
 // Analyze sentiment every 6 hours
 Schedule::command('analyze:sentiment')->everySixHours();
