@@ -52,15 +52,17 @@ NGINXCONF
 echo "==> Nginx config written"
 
 # Clear caches
+echo "==> Clearing all caches..."
 php artisan config:clear || true
 php artisan cache:clear || true
 php artisan route:clear || true
 php artisan view:clear || true
 
-# Cache
+# Cache AFTER clearing
 php artisan config:cache || true
-php artisan route:cache || true
 php artisan view:cache || true
+
+echo "==> Routes will be loaded dynamically (no route:cache in production)"
 
 # Migrate
 echo "==> Running migrations..."
