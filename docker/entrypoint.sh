@@ -69,7 +69,7 @@ php artisan route:cache
 php artisan view:cache
 
 echo "==> Running migrations..."
-php artisan migrate --force
+php artisan migrate --force || echo "WARNING: Migration failed, continuing anyway..."
 
 # Set storage permissions
 chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
