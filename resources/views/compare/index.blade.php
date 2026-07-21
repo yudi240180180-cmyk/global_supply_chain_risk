@@ -179,7 +179,33 @@ function renderComparison(a, b) {
 
     // ── Risk ──────────────────────────────────────────────────────────────────
     const [wa, wb] = winner(a.risk?.total_score, b.risk?.total_score, true);
-  
+    const ra = a.risk, rb = b.risk;
+    const riskRows = [
+        ['Total Risk Score', ra?.total_score ? fmt(ra.total_score, 2) : '—', rb?.total_score ? fmt(rb.total_score, 2) : '—', wa, wb],
+        ['Risk Level', ra?.risk_level ?? '—', rb?.risk_level ?? '—', '', ''],
+        ['Weather Score', ra?.weather_score ? fmt(ra.weather_score, 2) : '—', rb?.weather_score ? fmt(rb.weather_score, 2) : '—', ...winner(ra?.weather_score, rb?.weather_score, true)],
+        ['Inflation Score', ra?.inflation_score ? fmt(ra.inflation_score, 2) : '—', rb?.inflation_score ? fmt(rb.inflation_score, 2) : '—', ...winner(ra?.inflation_score, rb?.inflation_score, true)],
+        ['Currency Score', ra?.currency_score ? fmt(ra.currency_score, 2) : '—', rb?.currency_score ? fmt(rb.currency_score, 2) : '—', ...winner(ra?.currency_score, rb?.currency_score, true)],
+        ['News Score', ra?.news_score ? fmt(ra.news_score, 2) : '—', rb?.news_score ? fmt(rb.news_score, 2) : '—', ...winner(ra?.news_score, rb?.news_score, true)],
+    ];
+    document.getElementById('riskCompare').innerHTML = `
+        <h2 class="text-xl font-bold mb-5">⚠️ Risk Assessment</h2>
+        <table class="w-full text-sm">
+            <thead><tr class="text-slate-400 text-xs uppercase border-b border-slate-700">
+                <th class="py-2 text-left">Component</th>
+                <th class="py-2 text-center">${a.name}</th>
+                <th class="py-2 text-center">${b.name}</th>
+            </tr></thead>
+            <tbody class="divide-y divide-slate-700/40">
+                ${riskRows.map(([label, va, vb, aw, bw]) => `
+                <tr class="hover:bg-slate-800/30 transition">
+                    <td class="py-3 text-slate-400">${label}</td>
+                    <td class="py-3 text-center font-semibold ${label === 'Risk Level' ? riskBg(va) + ' inline-block px-3 py-1 rounded-full border' : ''}">${va} ${aw}</td>
+                    <td class="py-3 text-center font-semibold ${label === 'Risk Level' ? riskBg(vb) + ' inline-block px-3 py-1 rounded-full border' : ''}">${vb} ${bw}</td>
+                </tr>`).join('')}
+            </tbody>
+        </table>
+    `;
 
     // ── Economics ─────────────────────────────────────────────────────────────
     const ea = a.economics, eb = b.economics;

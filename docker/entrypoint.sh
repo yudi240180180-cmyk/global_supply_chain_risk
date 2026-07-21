@@ -70,6 +70,34 @@ php artisan view:cache || true
 echo "==> Running migrations..."
 php artisan migrate --force && echo "Migrations done." || echo "WARNING: migrate failed"
 
+# Seeding & Data Sync (only run ONCE on first deploy)
+echo "==> Checking if seeding is needed..."
+USER_COUNT=$(php artisan tinker --execute="echo \App\Models\User::count();" 2>/dev/null | tail -1 || echo "0")
+echo "==> Current user count: $USER_COUNT"
+
+if [ "$USER_COUNT" = "0" ]; then
+    echo "==> Seeding database for first time..."
+    php artisan db:seed --class=AdminUserSeeder --force || echo "AdminUserSeeder failed"
+    php artisan db:seed --class=ManagerUserSeeder --force || echo "ManagerUserSeeder failed"
+    
+    echo "==> Syncing all data (countries, economics, rates, news, weather, ports)..."
+    # Run in background to avoid timeout, log to file
+    nohup bash -c "
+        sleep 10
+        php artisan sync:countries >> /var/www/html/storage/logs/sync.log 2>&1
+        php artisan sync:economics >> /var/www/html/storage/logs/sync.log 2>&1
+        php artisan sync:rates >> /var/www/html/storage/logs/sync.log 2>&1
+        php artisan sync:news >> /var/www/html/storage/logs/sync.log 2>&1
+        php artisan sync:weather >> /var/www/html/storage/logs/sync.log 2>&1
+        php artisan calculate:risk >> /var/www/html/storage/logs/sync.log 2>&1
+        echo '==> Initial data sync completed at $(date)' >> /var/www/html/storage/logs/sync.log
+    " &
+    
+    echo "==> Background sync started. Check /storage/logs/sync.log for progress."
+else
+    echo "==> Users already exist ($USER_COUNT users). Skipping seed & sync."
+fi
+
 # Permissions
 chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache 2>/dev/null || true
 

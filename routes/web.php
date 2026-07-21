@@ -4,7 +4,37 @@ use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Route;
 
 // Health check endpoint for Railway
-Route::get('/health', fn() => response('OK', 200));
+Route::get('/health', function () {
+    $status = [
+        'status' => 'OK',
+        'database' => 'unknown',
+        'users' => 0,
+        'countries' => 0,
+        'ports' => 0,
+        'risk_scores' => 0,
+        'sync_log' => 'Not available',
+    ];
+
+    try {
+        \DB::connection()->getPdo();
+        $status['database'] = 'connected';
+        $status['users'] = \App\Models\User::count();
+        $status['countries'] = \App\Models\Country::count();
+        $status['ports'] = \App\Models\Port::count();
+        $status['risk_scores'] = \DB::table('risk_scores')->count();
+        
+        // Read last 50 lines of sync log
+        $logPath = storage_path('logs/sync.log');
+        if (file_exists($logPath)) {
+            $lines = file($logPath);
+            $status['sync_log'] = implode('', array_slice($lines, -50));
+        }
+    } catch (\Exception $e) {
+        $status['database'] = 'error: ' . $e->getMessage();
+    }
+
+    return response()->json($status);
+});
 use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\CountryController;
 use App\Http\Controllers\Api\RiskController;
