@@ -340,13 +340,15 @@ const map = L.map('world-map',{
     zoomControl:true
 
 }).setView([20,0],2);
+setTimeout(() => { map.invalidateSize(); }, 300);
 const riskMap = @json($riskMap);
 
 L.tileLayer(
-'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
 {
-    attribution:'© OpenStreetMap',
-    maxZoom:18
+    attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
+    subdomains: 'abcd',
+    maxZoom:19
 }).addTo(map);
 fetch('/data/world.geojson')
 
@@ -567,7 +569,7 @@ ${lng.toFixed(4)}
 margin:12px 0;
 ">
 
-<<a href="/ports/${port.id}"
+<a href="/ports/${port.id}"
 style="
 display:block;
 width:100%;

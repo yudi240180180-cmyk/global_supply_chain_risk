@@ -36,26 +36,26 @@ return [
     ],
 
     'restcountries' => [
-        'key' => env('RESTCOUNTRIES_API_KEY'),
-        'url' => env('RESTCOUNTRIES_URL'),
+        'key' => env('RESTCOUNTRIES_API_KEY', 'rc_live_ed1212343f104f3fa9fc99edcda4af15'),
+        'url' => env('RESTCOUNTRIES_URL', 'https://api.restcountries.com/countries/v5'),
     ],
 
     'worldbank' => [
-        'url' => env('WORLDBANK_URL'),
+        'url' => env('WORLDBANK_URL', 'https://api.worldbank.org/v2'),
     ],
 
     'openmeteo' => [
-        'url' => env('OPENMETEO_URL'),
+        'url' => env('OPENMETEO_URL', 'https://api.open-meteo.com/v1/forecast'),
     ],
 
     'exchangerate' => [
-        'key' => env('EXCHANGERATE_API_KEY'),
-        'url' => env('EXCHANGERATE_URL'),
+        'key' => env('EXCHANGERATE_API_KEY', '19e147ef22ce4522f33e4916'),
+        'url' => env('EXCHANGERATE_URL', 'https://v6.exchangerate-api.com/v6'),
     ],
 
     'gnews' => [
-        'key' => env('GNEWS_API_KEY'),
-        'url' => env('GNEWS_URL'),
+        'key' => env('GNEWS_API_KEY', '1db36192ec7c27c05c46ef0cad96f1a0'),
+        'url' => env('GNEWS_URL', 'https://gnews.io/api/v4'),
     ],
 
 ];
