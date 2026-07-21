@@ -64,6 +64,13 @@ php artisan view:cache || true
 
 echo "==> Routes will be loaded dynamically (no route:cache in production)"
 
+# Ensure SQLite database file and directory permissions
+echo "==> Setting permissions for SQLite and storage..."
+mkdir -p /var/www/html/database 2>/dev/null || true
+touch /var/www/html/database/database.sqlite 2>/dev/null || true
+chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache /var/www/html/database 2>/dev/null || true
+chmod -R 777 /var/www/html/storage /var/www/html/bootstrap/cache /var/www/html/database 2>/dev/null || true
+
 # Migrate database schema
 echo "==> Running migrations..."
 php artisan migrate --force || echo "Migrations done"
@@ -75,9 +82,6 @@ php artisan migrate --force || echo "Migrations done"
     php artisan db:seed --force || echo "Seeding complete"
     php artisan sync:all --skip-external || echo "Sync complete"
 ) &
-
-# Permissions
-chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache 2>/dev/null || true
 
 # Supervisord
 cat > /etc/supervisord.conf <<'SUPCONF'
