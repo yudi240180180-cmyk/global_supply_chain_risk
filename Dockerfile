@@ -35,8 +35,6 @@ RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
 # Install Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
-# Cache bust: 2026-07-21-v3
-
 # Set working directory
 WORKDIR /var/www/html
 
@@ -54,10 +52,8 @@ RUN chown -R www-data:www-data /var/www/html \
     && chmod -R 755 /var/www/html/storage \
     && chmod -R 755 /var/www/html/bootstrap/cache
 
-# Copy supervisor config
+# Copy configs
 COPY docker/supervisord.conf /etc/supervisord.conf
-
-# Copy entrypoint script
 COPY docker/entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
