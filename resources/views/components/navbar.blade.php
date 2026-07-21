@@ -46,13 +46,26 @@
             <i class="bi bi-bar-chart-steps text-sm"></i>
         </a>
 
-        {{-- Admin --}}
-        <div class="flex items-center gap-2 pl-2 border-l border-slate-700">
-            <div class="w-9 h-9 rounded-full bg-blue-600 flex items-center justify-center font-bold text-sm">A</div>
-            <div class="hidden md:block">
-                <div class="text-sm font-semibold leading-tight">Admin</div>
-                <div class="text-xs text-slate-400">GSCR Platform</div>
+        {{-- User profile --}}
+        <div class="flex items-center gap-4 pl-2 border-l border-slate-700">
+            <div class="flex items-center gap-2">
+                <div class="w-9 h-9 rounded-full bg-blue-600 flex items-center justify-center font-bold text-sm text-white">
+                    {{ session('auth_icon', '👑') }}
+                </div>
+                <div class="hidden md:block">
+                    <div class="text-sm font-semibold leading-tight text-white">{{ session('auth_user_name', 'Admin') }}</div>
+                    <div class="text-xs text-slate-400">System Admin</div>
+                </div>
             </div>
+
+            {{-- Logout --}}
+            <form method="POST" action="{{ route('auth.logout') }}">
+                @csrf
+                <button type="submit" class="glass rounded-xl px-3 py-1.5 text-slate-400 hover:text-red-400 transition text-xs flex items-center gap-1.5">
+                    <i class="bi bi-box-arrow-right"></i>
+                    Logout
+                </button>
+            </form>
         </div>
 
     </div>

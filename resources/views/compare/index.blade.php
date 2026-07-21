@@ -100,6 +100,10 @@
 let radarInstance = null;
 let barInstance   = null;
 
+// Safely coerce any API value to float (MySQL returns decimals as strings)
+const n = (v) => v == null ? null : parseFloat(v);
+const fmt = (v, digits = 1) => v == null ? '—' : n(v).toFixed(digits);
+
 // Auto-run if IDs provided in URL
 const urlParams = new URLSearchParams(window.location.search);
 const preIds = urlParams.get('ids');
@@ -169,49 +173,24 @@ function renderComparison(a, b) {
             <h2 class="text-3xl font-black">${c.name}</h2>
             <div class="text-slate-400 text-sm mt-1">${c.region ?? ''} · ${c.capital ?? ''}</div>
             <div class="text-slate-400 text-sm">${c.currency_code ?? ''} — ${c.currency_name ?? ''}</div>
-            ${c.exchange_rate_usd ? `<div class="mt-2 text-sm">1 USD = <b>${c.exchange_rate_usd.toFixed(4)} ${c.currency_code}</b></div>` : ''}
+            ${c.exchange_rate_usd ? `<div class="mt-2 text-sm">1 USD = <b>${n(c.exchange_rate_usd).toFixed(4)} ${c.currency_code}</b></div>` : ''}
         </div>
     `).join('');
 
     // ── Risk ──────────────────────────────────────────────────────────────────
     const [wa, wb] = winner(a.risk?.total_score, b.risk?.total_score, true);
-    document.getElementById('riskCompare').innerHTML = `
-        <h2 class="text-xl font-bold mb-5">⚠️ Risk Comparison</h2>
-        <div class="grid grid-cols-2 gap-8">
-            ${[{c:a,w:wa},{c:b,w:wb}].map(({c,w}) => {
-                const r = c.risk; const level = r?.risk_level ?? 'N/A';
-                return `
-                <div class="text-center">
-                    <div class="text-lg font-bold mb-3">${c.name} ${w}</div>
-                    <div class="text-6xl font-black" style="color:${riskColor(level)}">${r?.total_score ? r.total_score.toFixed(1) : '—'}</div>
-                    <div class="mt-2 inline-block px-4 py-1 rounded-full text-sm font-bold border ${riskBg(level)}">${level} Risk</div>
-                    ${r ? `
-                    <div class="mt-4 space-y-2 text-sm text-left max-w-xs mx-auto">
-                        ${[['Weather',r.weather_score],['Economic',r.inflation_score],['Currency',r.currency_score],['News',r.news_score]].map(([label,val]) => `
-                            <div class="flex justify-between items-center gap-3">
-                                <span class="text-slate-400 w-20">${label}</span>
-                                <div class="flex-1 bg-slate-700 rounded-full h-2">
-                                    <div class="h-2 rounded-full bg-blue-500" style="width:${Math.min(val,100)}%"></div>
-                                </div>
-                                <span class="font-semibold w-10 text-right">${val.toFixed(1)}</span>
-                            </div>
-                        `).join('')}
-                    </div>` : '<p class="text-slate-500 text-sm mt-3">No risk data</p>'}
-                </div>`;
-            }).join('')}
-        </div>
-    `;
+  
 
     // ── Economics ─────────────────────────────────────────────────────────────
     const ea = a.economics, eb = b.economics;
     const [gaW, gbW] = winner(ea?.gdp, eb?.gdp);
     const [iaW, ibW] = winner(ea?.inflation, eb?.inflation, true);
     const rows = [
-        ['GDP (USD)', ea?.gdp ? `$${(ea.gdp/1e9).toFixed(1)}B` : '—', eb?.gdp ? `$${(eb.gdp/1e9).toFixed(1)}B` : '—', gaW, gbW],
-        ['Inflation %', ea?.inflation ? `${ea.inflation.toFixed(2)}%` : '—', eb?.inflation ? `${eb.inflation.toFixed(2)}%` : '—', iaW, ibW],
+        ['GDP (USD)', ea?.gdp ? `$${(n(ea.gdp)/1e9).toFixed(1)}B` : '—', eb?.gdp ? `$${(n(eb.gdp)/1e9).toFixed(1)}B` : '—', gaW, gbW],
+        ['Inflation %', ea?.inflation ? `${fmt(ea.inflation,2)}%` : '—', eb?.inflation ? `${fmt(eb.inflation,2)}%` : '—', iaW, ibW],
         ['Population', ea?.population ? `${(ea.population/1e6).toFixed(1)}M` : '—', eb?.population ? `${(eb.population/1e6).toFixed(1)}M` : '—', ...winner(ea?.population, eb?.population)],
-        ['Exports', ea?.exports ? `$${(ea.exports/1e9).toFixed(1)}B` : '—', eb?.exports ? `$${(eb.exports/1e9).toFixed(1)}B` : '—', ...winner(ea?.exports, eb?.exports)],
-        ['Imports', ea?.imports ? `$${(ea.imports/1e9).toFixed(1)}B` : '—', eb?.imports ? `$${(eb.imports/1e9).toFixed(1)}B` : '—', ...winner(ea?.imports, eb?.imports, true)],
+        ['Exports', ea?.exports ? `$${(n(ea.exports)/1e9).toFixed(1)}B` : '—', eb?.exports ? `$${(n(eb.exports)/1e9).toFixed(1)}B` : '—', ...winner(ea?.exports, eb?.exports)],
+        ['Imports', ea?.imports ? `$${(n(ea.imports)/1e9).toFixed(1)}B` : '—', eb?.imports ? `$${(n(eb.imports)/1e9).toFixed(1)}B` : '—', ...winner(ea?.imports, eb?.imports, true)],
         ['Data Year', ea?.data_year ?? '—', eb?.data_year ?? '—', '', ''],
     ];
     document.getElementById('economicsCompare').innerHTML = `
@@ -236,10 +215,12 @@ function renderComparison(a, b) {
     // ── Weather ───────────────────────────────────────────────────────────────
     const wa2 = a.weather, wb2 = b.weather;
     const wrows = [
-        ['Temperature', wa2?.temperature != null ? `${wa2.temperature.toFixed(1)}°C` : '—', wb2?.temperature != null ? `${wb2.temperature.toFixed(1)}°C` : '—'],
-        ['Rainfall', wa2?.rainfall != null ? `${wa2.rainfall.toFixed(1)} mm` : '—', wb2?.rainfall != null ? `${wb2.rainfall.toFixed(1)} mm` : '—'],
-        ['Wind Speed', wa2?.wind_speed != null ? `${wa2.wind_speed.toFixed(1)} km/h` : '—', wb2?.wind_speed != null ? `${wb2.wind_speed.toFixed(1)} km/h` : '—'],
-        ['Storm Risk', wa2?.storm_risk != null ? `${wa2.storm_risk.toFixed(0)}/100` : '—', wb2?.storm_risk != null ? `${wb2.storm_risk.toFixed(0)}/100` : '—'],
+        ['Temperature', wa2?.temperature != null ? `${fmt(wa2.temperature)}°C` : '—', wb2?.temperature != null ? `${fmt(wb2.temperature)}°C` : '—'],
+        ['Rainfall', wa2?.rainfall != null ? `${fmt(wa2.rainfall)} mm` : '—', wb2?.rainfall != null ? `${fmt(wb2.rainfall)} mm` : '—'],
+        ['Wind Speed', wa2?.wind_speed != null ? `${fmt(wa2.wind_speed)} km/h` : '—', wb2?.wind_speed != null ? `${fmt(wb2.wind_speed)} km/h` : '—'],
+       ['Storm Risk',
+    wa2?.storm_risk != null ? `${Number(wa2.storm_risk).toFixed(0)}/100` : '—',
+    wb2?.storm_risk != null ? `${Number(wb2.storm_risk).toFixed(0)}/100` : '—'],
         ['Condition', wa2?.weather_condition ?? '—', wb2?.weather_condition ?? '—'],
     ];
     document.getElementById('weatherCompare').innerHTML = `
@@ -291,6 +272,20 @@ function renderComparison(a, b) {
     }
 
     // ── Bar Chart ─────────────────────────────────────────────────────────────
+        console.log("EA", ea);
+console.log("EB", eb);
+
+console.log({
+    gdpA: n(ea.gdp),
+    inflationA: n(ea.inflation),
+    exportsA: n(ea.exports),
+    importsA: n(ea.imports),
+
+    gdpB: n(eb.gdp),
+    inflationB: n(eb.inflation),
+    exportsB: n(eb.exports),
+    importsB: n(eb.imports),
+});
     if (barInstance) barInstance.destroy();
     if (ea && eb) {
         barInstance = new Chart(document.getElementById('barChart'), {
@@ -300,12 +295,17 @@ function renderComparison(a, b) {
                 datasets: [
                     {
                         label: a.name,
-                        data: [ea.gdp/1e9, ea.inflation, ea.exports/1e9, ea.imports/1e9],
+                        data: [
+    n(ea.gdp)/1e9,
+    n(ea.inflation),
+    n(ea.exports)/1e9,
+    n(ea.imports)/1e9
+],
                         backgroundColor: 'rgba(59,130,246,0.7)', borderColor: '#3b82f6', borderWidth: 1,
                     },
                     {
                         label: b.name,
-                        data: [eb.gdp/1e9, eb.inflation, eb.exports/1e9, eb.imports/1e9],
+                        data: [n(eb.gdp)/1e9, n(eb.inflation), n(eb.exports)/1e9, n(eb.imports)/1e9],
                         backgroundColor: 'rgba(239,68,68,0.7)', borderColor: '#ef4444', borderWidth: 1,
                     }
                 ]

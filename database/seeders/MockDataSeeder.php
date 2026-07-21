@@ -1,91 +1,34 @@
 <?php
 
-namespace App\Console\Commands;
+namespace Database\Seeders;
 
-use App\Services\ExchangeRateService;
-use App\Services\NewsService;
-use App\Services\RestCountriesService;
+use App\Models\Country;
+use App\Models\CountryEconomicsHistory;
+use App\Models\WeatherHistory;
+use App\Models\ExchangeRateHistory;
+use App\Models\NewsArticle;
+use App\Models\NewsSentiment;
 use App\Services\RiskScoringService;
-use App\Services\WeatherService;
-use App\Services\WorldBankService;
 use App\Services\SentimentAnalyzerService;
-use Illuminate\Console\Command;
+use Illuminate\Database\Seeder;
+use Illuminate\Support\Str;
 
-class SyncAllData extends Command
+class MockDataSeeder extends Seeder
 {
-    protected $signature = 'sync:all {--skip-external : Skip live external API calls and return immediately}';
-    protected $description = 'Run the full real-data sync pipeline for countries, economics, weather, news, FX rates, and risk scores';
-
-    public function handle(
-        RestCountriesService $countriesService,
-        WorldBankService $economicsService,
-        WeatherService $weatherService,
-        NewsService $newsService,
-        ExchangeRateService $exchangeRateService,
-        RiskScoringService $riskScoringService,
-        SentimentAnalyzerService $sentimentService,
-    ): int {
-        if ($this->option('skip-external')) {
-            $this->info('Skipping live API sync. Generating local mock data for development...');
-
-            $this->generateMockData($riskScoringService, $sentimentService);
-
-            $this->info('Mock data generation completed successfully.');
-            return self::SUCCESS;
-        }
-
-        $this->info('Starting full data sync pipeline...');
-
-        $countries = $countriesService->syncAllCountries();
-        $this->info("Countries synced: {$countries}");
-
-        $economics = $economicsService->syncAllCountries();
-        $this->info("Economics synced: {$economics}");
-
-        $weather = $weatherService->syncAllCountries();
-        $this->info("Weather records synced: {$weather}");
-
-        $news = $newsService->syncNews();
-        $this->info("News articles synced: {$news}");
-
-        // Jalankan analisis sentimen untuk berita yang baru masuk
-        $sentiments = $sentimentService->analyzeAllPending();
-        $this->info("News sentiments analyzed: {$sentiments}");
-
-        $rates = $exchangeRateService->syncRates();
-        $this->info("Exchange rates synced: {$rates}");
-
-        $riskScores = $riskScoringService->calculateAllCountries();
-        $this->info("Risk scores calculated: {$riskScores}");
-
-        $this->info('Pipeline completed successfully.');
-
-        return self::SUCCESS;
-    }
-
-    /**
-     * Generate realistic mock data locally for development/offline testing.
-     */
-    protected function generateMockData(
-        RiskScoringService $riskScoringService,
-        SentimentAnalyzerService $sentimentService
-    ): void {
-        $countries = \App\Models\Country::all();
+    public function run(): void
+    {
+        $countries = Country::all();
         if ($countries->isEmpty()) {
-            $this->warn('No countries found in the database. Seeding base list first...');
-            // Fallback seed
-            $seeder = new \Database\Seeders\CountrySeeder();
-            $seeder->run();
-            $countries = \App\Models\Country::all();
+            return;
         }
 
-        $this->info('Generating mock Exchange Rates...');
         $now = now();
         $yesterday = now()->subDay();
 
+        // 1. Exchange Rates
         $currencies = $countries->pluck('currency_code')->filter()->unique();
         foreach ($currencies as $currency) {
-            if (\App\Models\ExchangeRateHistory::where('currency_code', $currency)->exists()) {
+            if (ExchangeRateHistory::where('currency_code', $currency)->exists()) {
                 continue;
             }
 
@@ -116,7 +59,7 @@ class SyncAllData extends Command
                 $baseRate = rand(5, 200) / 10.0;
             }
 
-            \App\Models\ExchangeRateHistory::create([
+            ExchangeRateHistory::create([
                 'currency_code' => $currency,
                 'rate_to_usd' => $baseRate,
                 'fetched_at' => $yesterday,
@@ -125,16 +68,16 @@ class SyncAllData extends Command
             $volatility = (rand(-30, 30) / 1000.0);
             $todayRate = $baseRate * (1 + $volatility);
 
-            \App\Models\ExchangeRateHistory::create([
+            ExchangeRateHistory::create([
                 'currency_code' => $currency,
                 'rate_to_usd' => $todayRate,
                 'fetched_at' => $now,
             ]);
         }
 
-        $this->info('Generating mock Economics History...');
+        // 2. Economics
         foreach ($countries as $country) {
-            if (\App\Models\CountryEconomicsHistory::where('country_id', $country->id)->exists()) {
+            if (CountryEconomicsHistory::where('country_id', $country->id)->exists()) {
                 continue;
             }
 
@@ -176,7 +119,7 @@ class SyncAllData extends Command
             $exports = $gdp * (rand(15, 35) / 100.0);
             $imports = $gdp * (rand(18, 45) / 100.0);
 
-            \App\Models\CountryEconomicsHistory::create([
+            CountryEconomicsHistory::create([
                 'country_id' => $country->id,
                 'gdp' => $gdp,
                 'inflation' => $inflation,
@@ -188,9 +131,9 @@ class SyncAllData extends Command
             ]);
         }
 
-        $this->info('Generating mock Weather History...');
+        // 3. Weather
         foreach ($countries as $country) {
-            if (\App\Models\WeatherHistory::where('country_id', $country->id)->exists()) {
+            if (WeatherHistory::where('country_id', $country->id)->exists()) {
                 continue;
             }
 
@@ -226,7 +169,7 @@ class SyncAllData extends Command
                 $condition = 'Rain';
             }
 
-            \App\Models\WeatherHistory::create([
+            WeatherHistory::create([
                 'country_id' => $country->id,
                 'temperature' => $temp,
                 'rainfall' => $rain,
@@ -237,7 +180,8 @@ class SyncAllData extends Command
             ]);
         }
 
-        $this->info('Generating mock News Articles & Sentiment...');
+        // 4. News Articles & Sentiment
+        $sentimentService = resolve(SentimentAnalyzerService::class);
         $mockArticles = [
             [
                 'title' => 'Shanghai Port congestion worsens as Peak Season hits shipping corridors',
@@ -290,12 +234,12 @@ class SyncAllData extends Command
         ];
 
         foreach ($mockArticles as $art) {
-            $exists = \App\Models\NewsArticle::where('title', $art['title'])->first();
+            $exists = NewsArticle::where('title', $art['title'])->first();
             if ($exists) {
                 if (!$exists->sentiment) {
                     $text = $exists->title . ' ' . ($exists->content_snippet ?? '');
                     $res = $sentimentService->analyzeText($text);
-                    \App\Models\NewsSentiment::create([
+                    NewsSentiment::create([
                         'news_article_id' => $exists->id,
                         'positive_count' => $res['positive_count'],
                         'negative_count' => $res['negative_count'],
@@ -306,10 +250,10 @@ class SyncAllData extends Command
                 continue;
             }
 
-            $article = \App\Models\NewsArticle::create([
+            $article = NewsArticle::create([
                 'title' => $art['title'],
                 'source' => $art['source'],
-                'url' => 'https://example.com/news/' . \Illuminate\Support\Str::slug($art['title']),
+                'url' => 'https://example.com/news/' . Str::slug($art['title']),
                 'category' => $art['category'],
                 'content_snippet' => $art['description'],
                 'published_at' => $now,
@@ -318,7 +262,7 @@ class SyncAllData extends Command
             $text = $article->title . ' ' . ($article->content_snippet ?? '');
             $res = $sentimentService->analyzeText($text);
 
-            \App\Models\NewsSentiment::create([
+            NewsSentiment::create([
                 'news_article_id' => $article->id,
                 'positive_count' => $res['positive_count'],
                 'negative_count' => $res['negative_count'],
@@ -327,8 +271,8 @@ class SyncAllData extends Command
             ]);
         }
 
-        $this->info('Calculating risk scores for all countries...');
-        $totalCalculated = $riskScoringService->calculateAllCountries();
-        $this->info("Risk scores calculated for {$totalCalculated} countries.");
+        // 5. Calculate Risk Scores
+        $riskScoringService = resolve(RiskScoringService::class);
+        $riskScoringService->calculateAllCountries();
     }
 }
