@@ -75,18 +75,30 @@ chmod -R 777 /var/www/html/storage /var/www/html/bootstrap/cache /var/www/html/d
 echo "==> Running migrations..."
 php artisan migrate --force || echo "Migrations done"
 
-# Run background initial seed and sync so Nginx starts immediately (health check passes)
+# ── CRITICAL: Seed admin/manager users SYNCHRONOUSLY before server starts ──────
+echo "==> Seeding admin and manager users..."
+php artisan db:seed --class=AdminUserSeeder --force || echo "AdminUserSeeder done"
+php artisan db:seed --class=ManagerUserSeeder --force || echo "ManagerUserSeeder done"
+php artisan db:seed --class=RiskWeightSeeder --force || echo "RiskWeightSeeder done"
+php artisan db:seed --class=PositiveWordSeeder --force || echo "PositiveWordSeeder done"
+php artisan db:seed --class=NegativeWordSeeder --force || echo "NegativeWordSeeder done"
+echo "==> Core users and config seeded. Server is ready to accept logins."
+
+# ── BACKGROUND: Heavy seeding (countries, ports, weather, sync) ─────────────
 (
     sleep 5
-    echo "==> Running background seeding..."
+    echo "==> [BG] Seeding countries and ports..."
     php artisan db:seed --class=CountrySeeder --force || echo "CountrySeeder done"
     php artisan db:seed --class=PortSeeder --force || echo "PortSeeder done"
-    php artisan db:seed --class=DatabaseSeeder --force || echo "DatabaseSeeder done"
+    php artisan db:seed --class=SupplierSeeder --force || echo "SupplierSeeder done"
+    php artisan db:seed --class=ShipmentSeeder --force || echo "ShipmentSeeder done"
+    php artisan db:seed --class=PurchaseOrderSeeder --force || echo "PurchaseOrderSeeder done"
+    php artisan db:seed --class=MockDataSeeder --force || echo "MockDataSeeder done"
 
-    echo "==> Running real data sync (countries, weather, economics, news, risk)..."
+    echo "==> [BG] Running real data sync (countries, weather, economics, news, risk)..."
     php artisan sync:all || echo "Sync complete"
 
-    echo "==> All seeding and sync complete"
+    echo "==> [BG] All background seeding and sync complete."
 ) &
 
 # Supervisord
