@@ -10,6 +10,7 @@
         <div>
             <h1 class="text-4xl font-bold">🌍 Global Countries</h1>
             <p class="text-slate-400 mt-1">Monitor economic & risk indicators per country</p>
+            <p class="text-xs text-slate-500 mt-1">Rendering {{ $countries->count() }} countries in grid (scroll down to see all)</p>
         </div>
         <div class="glass rounded-xl px-5 py-3 text-center">
             <div class="text-2xl font-bold">{{ $countries->count() }}</div>
@@ -181,6 +182,13 @@ const riskFilter   = document.getElementById('riskFilter');
 const cards        = document.querySelectorAll('.country-card');
 const noResults    = document.getElementById('noResults');
 
+// Add a visible results counter
+const resultCounter = document.createElement('div');
+resultCounter.id = 'resultCounter';
+resultCounter.className = 'text-sm text-slate-400 mt-2';
+resultCounter.textContent = `Showing ${cards.length} of ${cards.length} countries`;
+document.querySelector('#countryGrid').insertAdjacentElement('beforebegin', resultCounter);
+
 function filterCards() {
     const search = searchInput.value.toLowerCase().trim();
     const region = regionFilter.value;
@@ -201,6 +209,7 @@ function filterCards() {
     });
 
     noResults.classList.toggle('hidden', visible > 0);
+    resultCounter.textContent = `Showing ${visible} of ${cards.length} countries`;
 }
 
 function clearFilters() {
