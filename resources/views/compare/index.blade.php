@@ -39,7 +39,7 @@
                     @endforeach
                 </select>
             </div>
-            <button id="compareBtn" onclick="runComparison()"
+            <button id="compareBtn"
                 class="px-8 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 transition font-bold text-base flex-shrink-0">
                 Compare
             </button>
@@ -93,259 +93,258 @@
     </div>
 
 </div>
-@endsection
 
-@push('scripts')
 <script>
-let radarInstance = null;
-let barInstance   = null;
+(function() {
+    console.log('=== COMPARE PAGE LOADED ===');
+    
+    let radarInstance = null;
+    let barInstance = null;
+    const n = (v) => v == null ? null : parseFloat(v);
+    const fmt = (v, digits = 1) => v == null ? '—' : n(v).toFixed(digits);
 
-// Safely coerce any API value to float (MySQL returns decimals as strings)
-const n = (v) => v == null ? null : parseFloat(v);
-const fmt = (v, digits = 1) => v == null ? '—' : n(v).toFixed(digits);
+    function riskBg(level) {
+        return level === 'High' ? 'bg-red-500/20 border-red-500/40 text-red-400'
+             : level === 'Medium' ? 'bg-yellow-500/20 border-yellow-500/40 text-yellow-400'
+             : 'bg-green-500/20 border-green-500/40 text-green-400';
+    }
 
-// Auto-run if IDs provided in URL
-const urlParams = new URLSearchParams(window.location.search);
-const preIds = urlParams.get('ids');
-if (preIds) {
-    const parts = preIds.split(',');
-    if (parts[0]) document.getElementById('countryA').value = parts[0];
-    if (parts[1]) document.getElementById('countryB').value = parts[1];
-    if (parts[0] && parts[1]) setTimeout(runComparison, 200);
-}
+    function winner(valA, valB, lowerIsBetter = false) {
+        if (valA == null || valB == null) return ['', ''];
+        const aWins = lowerIsBetter ? valA < valB : valA > valB;
+        return aWins ? ['🏆', ''] : ['', '🏆'];
+    }
 
-async function runComparison() {
-    const a = document.getElementById('countryA').value;
-    const b = document.getElementById('countryB').value;
-    if (!a || !b) { alert('Please select two countries.'); return; }
-    if (a === b)  { alert('Please select two different countries.'); return; }
+    window.runComparison = async function() {
+        console.log('runComparison called');
+        const a = document.getElementById('countryA').value;
+        const b = document.getElementById('countryB').value;
+        if (!a || !b) { alert('Please select two countries.'); return; }
+        if (a === b) { alert('Please select two different countries.'); return; }
 
-    document.getElementById('emptyState').classList.add('hidden');
-    document.getElementById('comparisonResult').classList.add('hidden');
-    document.getElementById('loadingState').classList.remove('hidden');
+        document.getElementById('emptyState').classList.add('hidden');
+        document.getElementById('comparisonResult').classList.add('hidden');
+        document.getElementById('loadingState').classList.remove('hidden');
 
-    try {
-        const res  = await fetch(`/api/compare?ids=${a},${b}`, {
-            headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
-        });
-        if (!res.ok) {
-            const text = await res.text();
-            throw new Error(`HTTP ${res.status}: ${text.substring(0, 200)}`);
+        try {
+            console.log('Fetching /api/compare?ids=' + a + ',' + b);
+            const res = await fetch(`/api/compare?ids=${a},${b}`);
+            console.log('Response status:', res.status);
+            if (!res.ok) {
+                const text = await res.text();
+                throw new Error(`HTTP ${res.status}: ${text}`);
+            }
+            const data = await res.json();
+            console.log('Response data:', data);
+            if (!Array.isArray(data) || data.length < 1) throw new Error('No data');
+            renderComparison(data[0], data[1] ?? data[0]);
+        } catch(e) {
+            console.error('Compare error:', e);
+            document.getElementById('loadingState').classList.add('hidden');
+            document.getElementById('emptyState').classList.remove('hidden');
+            document.getElementById('emptyState').innerHTML = `<div class="text-red-400 text-lg">${e.message}</div>`;
         }
-        const data = await res.json();
-        if (!Array.isArray(data) || data.length < 1) throw new Error('No data returned');
+    };
 
-        renderComparison(data[0], data[1] ?? data[0]);
-    } catch(e) {
-        console.error('Compare error:', e);
+    function renderComparison(a, b) {
+        console.log('Rendering:', a.name, 'vs', b.name);
         document.getElementById('loadingState').classList.add('hidden');
-        document.getElementById('emptyState').classList.remove('hidden');
-        document.getElementById('emptyState').innerHTML = `
-            <div class="text-red-400 text-xl mb-2">Failed to load comparison data.</div>
-            <div class="text-slate-500 text-sm font-mono">${e.message}</div>
+        document.getElementById('comparisonResult').classList.remove('hidden');
+
+        // Headers
+        document.getElementById('countryHeaders').innerHTML = [a, b].map(c => `
+            <div class="glass rounded-2xl p-6 text-center">
+                ${c.flag_url ? `<img src="${c.flag_url}" class="w-20 h-14 object-cover rounded-xl mx-auto mb-3">` : ''}
+                <h2 class="text-3xl font-black">${c.name}</h2>
+                <div class="text-slate-400 text-sm">${c.region ?? ''}</div>
+            </div>
+        `).join('');
+
+        // Risk
+        const ra = a.risk, rb = b.risk;
+        const riskRows = [
+            ['Total Risk Score', ra?.total_score ? fmt(ra.total_score, 2) : '—', rb?.total_score ? fmt(rb.total_score, 2) : '—'],
+            ['Risk Level', ra?.risk_level ?? '—', rb?.risk_level ?? '—'],
+            ['Weather Score', ra?.weather_score ? fmt(ra.weather_score, 2) : '—', rb?.weather_score ? fmt(rb.weather_score, 2) : '—'],
+            ['Inflation Score', ra?.inflation_score ? fmt(ra.inflation_score, 2) : '—', rb?.inflation_score ? fmt(rb.inflation_score, 2) : '—'],
+            ['Currency Score', ra?.currency_score ? fmt(ra.currency_score, 2) : '—', rb?.currency_score ? fmt(rb.currency_score, 2) : '—'],
+            ['News Score', ra?.news_score ? fmt(ra.news_score, 2) : '—', rb?.news_score ? fmt(rb.news_score, 2) : '—'],
+        ];
+        document.getElementById('riskCompare').innerHTML = `
+            <h2 class="text-xl font-bold mb-5">⚠️ Risk Assessment</h2>
+            <table class="w-full text-sm">
+                <thead><tr class="text-slate-400 text-xs uppercase border-b border-slate-700">
+                    <th class="py-2 text-left">Component</th>
+                    <th class="py-2 text-center">${a.name}</th>
+                    <th class="py-2 text-center">${b.name}</th>
+                </tr></thead>
+                <tbody class="divide-y divide-slate-700/40">
+                    ${riskRows.map(([l,va,vb]) => `
+                    <tr class="hover:bg-slate-800/30 transition">
+                        <td class="py-3 text-slate-400">${l}</td>
+                        <td class="py-3 text-center font-semibold">${va}</td>
+                        <td class="py-3 text-center font-semibold">${vb}</td>
+                    </tr>`).join('')}
+                </tbody>
+            </table>
         `;
-    }
-}
 
-function riskColor(level) {
-    return level === 'High' ? '#ef4444' : level === 'Medium' ? '#f59e0b' : '#22c55e';
-}
-function riskBg(level) {
-    return level === 'High' ? 'bg-red-500/20 border-red-500/40 text-red-400'
-         : level === 'Medium' ? 'bg-yellow-500/20 border-yellow-500/40 text-yellow-400'
-         : 'bg-green-500/20 border-green-500/40 text-green-400';
-}
+        // Economics
+        const ea = a.economics, eb = b.economics;
+        document.getElementById('economicsCompare').innerHTML = `
+            <h2 class="text-xl font-bold mb-5">📊 Economic Indicators</h2>
+            <table class="w-full text-sm">
+                <thead><tr class="text-slate-400 text-xs uppercase border-b border-slate-700">
+                    <th class="py-2 text-left">Indicator</th>
+                    <th class="py-2 text-center">${a.name}</th>
+                    <th class="py-2 text-center">${b.name}</th>
+                </tr></thead>
+                <tbody class="divide-y divide-slate-700/40">
+                    <tr><td class="py-3 text-slate-400">GDP (USD)</td><td class="py-3 text-center">${ea?.gdp ? '$' + (n(ea.gdp)/1e9).toFixed(1) + 'B' : '—'}</td><td class="py-3 text-center">${eb?.gdp ? '$' + (n(eb.gdp)/1e9).toFixed(1) + 'B' : '—'}</td></tr>
+                    <tr><td class="py-3 text-slate-400">Inflation %</td><td class="py-3 text-center">${ea?.inflation ? fmt(ea.inflation, 2) + '%' : '—'}</td><td class="py-3 text-center">${eb?.inflation ? fmt(eb.inflation, 2) + '%' : '—'}</td></tr>
+                    <tr><td class="py-3 text-slate-400">Exports (USD)</td><td class="py-3 text-center">${ea?.exports ? '$' + (n(ea.exports)/1e9).toFixed(1) + 'B' : '—'}</td><td class="py-3 text-center">${eb?.exports ? '$' + (n(eb.exports)/1e9).toFixed(1) + 'B' : '—'}</td></tr>
+                    <tr><td class="py-3 text-slate-400">Imports (USD)</td><td class="py-3 text-center">${ea?.imports ? '$' + (n(ea.imports)/1e9).toFixed(1) + 'B' : '—'}</td><td class="py-3 text-center">${eb?.imports ? '$' + (n(eb.imports)/1e9).toFixed(1) + 'B' : '—'}</td></tr>
+                </tbody>
+            </table>
+        `;
 
-function winner(valA, valB, lowerIsBetter = false) {
-    if (valA == null || valB == null) return ['', ''];
-    const aWins = lowerIsBetter ? valA < valB : valA > valB;
-    return aWins ? ['🏆', ''] : ['', '🏆'];
-}
+        // Weather
+        const wa = a.weather, wb = b.weather;
+        document.getElementById('weatherCompare').innerHTML = `
+            <h2 class="text-xl font-bold mb-5">🌤️ Weather</h2>
+            <table class="w-full text-sm">
+                <thead><tr class="text-slate-400 text-xs uppercase border-b border-slate-700">
+                    <th class="py-2 text-left">Parameter</th>
+                    <th class="py-2 text-center">${a.name}</th>
+                    <th class="py-2 text-center">${b.name}</th>
+                </tr></thead>
+                <tbody class="divide-y divide-slate-700/40">
+                    <tr><td class="py-3 text-slate-400">Temperature</td><td class="py-3 text-center">${wa?.temperature ? fmt(wa.temperature) + '°C' : '—'}</td><td class="py-3 text-center">${wb?.temperature ? fmt(wb.temperature) + '°C' : '—'}</td></tr>
+                    <tr><td class="py-3 text-slate-400">Rainfall</td><td class="py-3 text-center">${wa?.rainfall ? fmt(wa.rainfall) + 'mm' : '—'}</td><td class="py-3 text-center">${wb?.rainfall ? fmt(wb.rainfall) + 'mm' : '—'}</td></tr>
+                    <tr><td class="py-3 text-slate-400">Wind Speed</td><td class="py-3 text-center">${wa?.wind_speed ? fmt(wa.wind_speed) + 'km/h' : '—'}</td><td class="py-3 text-center">${wb?.wind_speed ? fmt(wb.wind_speed) + 'km/h' : '—'}</td></tr>
+                    <tr><td class="py-3 text-slate-400">Storm Risk</td><td class="py-3 text-center">${wa?.storm_risk ? Math.round(wa.storm_risk) + '/100' : '—'}</td><td class="py-3 text-center">${wb?.storm_risk ? Math.round(wb.storm_risk) + '/100' : '—'}</td></tr>
+                </tbody>
+            </table>
+        `;
 
-function renderComparison(a, b) {
-    document.getElementById('loadingState').classList.add('hidden');
-    document.getElementById('comparisonResult').classList.remove('hidden');
-
-    // ── Headers ──────────────────────────────────────────────────────────────
-    document.getElementById('countryHeaders').innerHTML = [a, b].map(c => `
-        <div class="glass rounded-2xl p-6 text-center">
-            ${c.flag_url ? `<img src="${c.flag_url}" class="w-20 h-14 object-cover rounded-xl mx-auto mb-3 shadow-lg">` : '<div class="w-20 h-14 bg-slate-700 rounded-xl mx-auto mb-3"></div>'}
-            <h2 class="text-3xl font-black">${c.name}</h2>
-            <div class="text-slate-400 text-sm mt-1">${c.region ?? ''} · ${c.capital ?? ''}</div>
-            <div class="text-slate-400 text-sm">${c.currency_code ?? ''} — ${c.currency_name ?? ''}</div>
-            ${c.exchange_rate_usd ? `<div class="mt-2 text-sm">1 USD = <b>${n(c.exchange_rate_usd).toFixed(4)} ${c.currency_code}</b></div>` : ''}
-        </div>
-    `).join('');
-
-    // ── Risk ──────────────────────────────────────────────────────────────────
-    const [wa, wb] = winner(a.risk?.total_score, b.risk?.total_score, true);
-    const ra = a.risk, rb = b.risk;
-    const riskRows = [
-        ['Total Risk Score', ra?.total_score ? fmt(ra.total_score, 2) : '—', rb?.total_score ? fmt(rb.total_score, 2) : '—', wa, wb],
-        ['Risk Level', ra?.risk_level ?? '—', rb?.risk_level ?? '—', '', ''],
-        ['Weather Score', ra?.weather_score ? fmt(ra.weather_score, 2) : '—', rb?.weather_score ? fmt(rb.weather_score, 2) : '—', ...winner(ra?.weather_score, rb?.weather_score, true)],
-        ['Inflation Score', ra?.inflation_score ? fmt(ra.inflation_score, 2) : '—', rb?.inflation_score ? fmt(rb.inflation_score, 2) : '—', ...winner(ra?.inflation_score, rb?.inflation_score, true)],
-        ['Currency Score', ra?.currency_score ? fmt(ra.currency_score, 2) : '—', rb?.currency_score ? fmt(rb.currency_score, 2) : '—', ...winner(ra?.currency_score, rb?.currency_score, true)],
-        ['News Score', ra?.news_score ? fmt(ra.news_score, 2) : '—', rb?.news_score ? fmt(rb.news_score, 2) : '—', ...winner(ra?.news_score, rb?.news_score, true)],
-    ];
-    document.getElementById('riskCompare').innerHTML = `
-        <h2 class="text-xl font-bold mb-5">⚠️ Risk Assessment</h2>
-        <table class="w-full text-sm">
-            <thead><tr class="text-slate-400 text-xs uppercase border-b border-slate-700">
-                <th class="py-2 text-left">Component</th>
-                <th class="py-2 text-center">${a.name}</th>
-                <th class="py-2 text-center">${b.name}</th>
-            </tr></thead>
-            <tbody class="divide-y divide-slate-700/40">
-                ${riskRows.map(([label, va, vb, aw, bw]) => `
-                <tr class="hover:bg-slate-800/30 transition">
-                    <td class="py-3 text-slate-400">${label}</td>
-                    <td class="py-3 text-center font-semibold ${label === 'Risk Level' ? riskBg(va) + ' inline-block px-3 py-1 rounded-full border' : ''}">${va} ${aw}</td>
-                    <td class="py-3 text-center font-semibold ${label === 'Risk Level' ? riskBg(vb) + ' inline-block px-3 py-1 rounded-full border' : ''}">${vb} ${bw}</td>
-                </tr>`).join('')}
-            </tbody>
-        </table>
-    `;
-
-    // ── Economics ─────────────────────────────────────────────────────────────
-    const ea = a.economics, eb = b.economics;
-    const [gaW, gbW] = winner(ea?.gdp, eb?.gdp);
-    const [iaW, ibW] = winner(ea?.inflation, eb?.inflation, true);
-    const rows = [
-        ['GDP (USD)', ea?.gdp ? `$${(n(ea.gdp)/1e9).toFixed(1)}B` : '—', eb?.gdp ? `$${(n(eb.gdp)/1e9).toFixed(1)}B` : '—', gaW, gbW],
-        ['Inflation %', ea?.inflation ? `${fmt(ea.inflation,2)}%` : '—', eb?.inflation ? `${fmt(eb.inflation,2)}%` : '—', iaW, ibW],
-        ['Population', ea?.population ? `${(ea.population/1e6).toFixed(1)}M` : '—', eb?.population ? `${(eb.population/1e6).toFixed(1)}M` : '—', ...winner(ea?.population, eb?.population)],
-        ['Exports', ea?.exports ? `$${(n(ea.exports)/1e9).toFixed(1)}B` : '—', eb?.exports ? `$${(n(eb.exports)/1e9).toFixed(1)}B` : '—', ...winner(ea?.exports, eb?.exports)],
-        ['Imports', ea?.imports ? `$${(n(ea.imports)/1e9).toFixed(1)}B` : '—', eb?.imports ? `$${(n(eb.imports)/1e9).toFixed(1)}B` : '—', ...winner(ea?.imports, eb?.imports, true)],
-        ['Data Year', ea?.data_year ?? '—', eb?.data_year ?? '—', '', ''],
-    ];
-    document.getElementById('economicsCompare').innerHTML = `
-        <h2 class="text-xl font-bold mb-5">📊 Economic Indicators</h2>
-        <table class="w-full text-sm">
-            <thead><tr class="text-slate-400 text-xs uppercase border-b border-slate-700">
-                <th class="py-2 text-left">Indicator</th>
-                <th class="py-2 text-center">${a.name}</th>
-                <th class="py-2 text-center">${b.name}</th>
-            </tr></thead>
-            <tbody class="divide-y divide-slate-700/40">
-                ${rows.map(([label, va, vb, aw, bw]) => `
-                <tr class="hover:bg-slate-800/30 transition">
-                    <td class="py-3 text-slate-400">${label}</td>
-                    <td class="py-3 text-center font-semibold">${va} ${aw}</td>
-                    <td class="py-3 text-center font-semibold">${vb} ${bw}</td>
-                </tr>`).join('')}
-            </tbody>
-        </table>
-    `;
-
-    // ── Weather ───────────────────────────────────────────────────────────────
-    const wa2 = a.weather, wb2 = b.weather;
-    const wrows = [
-        ['Temperature', wa2?.temperature != null ? `${fmt(wa2.temperature)}°C` : '—', wb2?.temperature != null ? `${fmt(wb2.temperature)}°C` : '—'],
-        ['Rainfall', wa2?.rainfall != null ? `${fmt(wa2.rainfall)} mm` : '—', wb2?.rainfall != null ? `${fmt(wb2.rainfall)} mm` : '—'],
-        ['Wind Speed', wa2?.wind_speed != null ? `${fmt(wa2.wind_speed)} km/h` : '—', wb2?.wind_speed != null ? `${fmt(wb2.wind_speed)} km/h` : '—'],
-       ['Storm Risk',
-    wa2?.storm_risk != null ? `${Number(wa2.storm_risk).toFixed(0)}/100` : '—',
-    wb2?.storm_risk != null ? `${Number(wb2.storm_risk).toFixed(0)}/100` : '—'],
-        ['Condition', wa2?.weather_condition ?? '—', wb2?.weather_condition ?? '—'],
-    ];
-    document.getElementById('weatherCompare').innerHTML = `
-        <h2 class="text-xl font-bold mb-5">🌤️ Weather Conditions</h2>
-        <table class="w-full text-sm">
-            <thead><tr class="text-slate-400 text-xs uppercase border-b border-slate-700">
-                <th class="py-2 text-left">Parameter</th>
-                <th class="py-2 text-center">${a.name}</th>
-                <th class="py-2 text-center">${b.name}</th>
-            </tr></thead>
-            <tbody class="divide-y divide-slate-700/40">
-                ${wrows.map(([label,va,vb]) => `
-                <tr class="hover:bg-slate-800/30 transition">
-                    <td class="py-3 text-slate-400">${label}</td>
-                    <td class="py-3 text-center font-semibold">${va}</td>
-                    <td class="py-3 text-center font-semibold">${vb}</td>
-                </tr>`).join('')}
-            </tbody>
-        </table>
-    `;
-
-    // ── Radar Chart ───────────────────────────────────────────────────────────
-    if (radarInstance) radarInstance.destroy();
-    const ra = a.risk, rb = b.risk;
-    if (ra && rb) {
-        radarInstance = new Chart(document.getElementById('radarChart'), {
-            type: 'radar',
-            data: {
-                labels: ['Weather', 'Economic', 'Currency', 'News', 'Total'],
-                datasets: [
-                    {
-                        label: a.name,
-                        data: [ra.weather_score, ra.inflation_score, ra.currency_score, ra.news_score, ra.total_score],
-                        borderColor: '#3b82f6', backgroundColor: 'rgba(59,130,246,0.15)', pointBackgroundColor: '#3b82f6',
+        // Radar Chart
+        if (radarInstance) radarInstance.destroy();
+        if (typeof Chart !== 'undefined' && ra && rb) {
+            console.log('Creating radar chart');
+            const radarCtx = document.getElementById('radarChart');
+            if (radarCtx) {
+                radarInstance = new Chart(radarCtx, {
+                    type: 'radar',
+                    data: {
+                        labels: ['Weather', 'Inflation', 'Currency', 'News', 'Total'],
+                        datasets: [
+                            {
+                                label: a.name,
+                                data: [n(ra.weather_score)||0, n(ra.inflation_score)||0, n(ra.currency_score)||0, n(ra.news_score)||0, n(ra.total_score)||0],
+                                borderColor: '#3b82f6',
+                                backgroundColor: 'rgba(59,130,246,0.15)',
+                                pointBackgroundColor: '#3b82f6',
+                                borderWidth: 2,
+                                pointRadius: 4,
+                            },
+                            {
+                                label: b.name,
+                                data: [n(rb.weather_score)||0, n(rb.inflation_score)||0, n(rb.currency_score)||0, n(rb.news_score)||0, n(rb.total_score)||0],
+                                borderColor: '#ef4444',
+                                backgroundColor: 'rgba(239,68,68,0.15)',
+                                pointBackgroundColor: '#ef4444',
+                                borderWidth: 2,
+                                pointRadius: 4,
+                            }
+                        ]
                     },
-                    {
-                        label: b.name,
-                        data: [rb.weather_score, rb.inflation_score, rb.currency_score, rb.news_score, rb.total_score],
-                        borderColor: '#ef4444', backgroundColor: 'rgba(239,68,68,0.15)', pointBackgroundColor: '#ef4444',
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: { legend: { labels: { color: '#94a3b8', font: { size: 12 } } } },
+                        scales: {
+                            r: {
+                                ticks: { color: '#64748b', backdropColor: 'transparent' },
+                                grid: { color: '#1e293b' },
+                                pointLabels: { color: '#94a3b8', font: { size: 11 } },
+                                min: 0,
+                                max: 100
+                            }
+                        }
                     }
-                ]
-            },
-            options: {
-                responsive: true, maintainAspectRatio: false,
-                plugins: { legend: { labels: { color: '#94a3b8' } } },
-                scales: { r: { ticks: { color: '#64748b', backdropColor: 'transparent' }, grid: { color: '#1e293b' }, pointLabels: { color: '#94a3b8' }, min: 0, max: 100 } }
+                });
             }
-        });
-    }
+        }
 
-    // ── Bar Chart ─────────────────────────────────────────────────────────────
-        console.log("EA", ea);
-console.log("EB", eb);
-
-console.log({
-    gdpA: n(ea.gdp),
-    inflationA: n(ea.inflation),
-    exportsA: n(ea.exports),
-    importsA: n(ea.imports),
-
-    gdpB: n(eb.gdp),
-    inflationB: n(eb.inflation),
-    exportsB: n(eb.exports),
-    importsB: n(eb.imports),
-});
-    if (barInstance) barInstance.destroy();
-    if (ea && eb) {
-        barInstance = new Chart(document.getElementById('barChart'), {
-            type: 'bar',
-            data: {
-                labels: ['GDP (B USD)', 'Inflation (%)', 'Exports (B USD)', 'Imports (B USD)'],
-                datasets: [
-                    {
-                        label: a.name,
-                        data: [
-    n(ea.gdp)/1e9,
-    n(ea.inflation),
-    n(ea.exports)/1e9,
-    n(ea.imports)/1e9
-],
-                        backgroundColor: 'rgba(59,130,246,0.7)', borderColor: '#3b82f6', borderWidth: 1,
+        // Bar Chart
+        if (barInstance) barInstance.destroy();
+        if (typeof Chart !== 'undefined' && ea && eb) {
+            console.log('Creating bar chart');
+            const barCtx = document.getElementById('barChart');
+            if (barCtx) {
+                barInstance = new Chart(barCtx, {
+                    type: 'bar',
+                    data: {
+                        labels: ['GDP (B USD)', 'Inflation (%)', 'Exports (B USD)', 'Imports (B USD)'],
+                        datasets: [
+                            {
+                                label: a.name,
+                                data: [
+                                    n(ea.gdp)/1e9 || 0,
+                                    n(ea.inflation) || 0,
+                                    n(ea.exports)/1e9 || 0,
+                                    n(ea.imports)/1e9 || 0
+                                ],
+                                backgroundColor: 'rgba(59,130,246,0.7)',
+                                borderColor: '#3b82f6',
+                                borderWidth: 1,
+                            },
+                            {
+                                label: b.name,
+                                data: [
+                                    n(eb.gdp)/1e9 || 0,
+                                    n(eb.inflation) || 0,
+                                    n(eb.exports)/1e9 || 0,
+                                    n(eb.imports)/1e9 || 0
+                                ],
+                                backgroundColor: 'rgba(239,68,68,0.7)',
+                                borderColor: '#ef4444',
+                                borderWidth: 1,
+                            }
+                        ]
                     },
-                    {
-                        label: b.name,
-                        data: [n(eb.gdp)/1e9, n(eb.inflation), n(eb.exports)/1e9, n(eb.imports)/1e9],
-                        backgroundColor: 'rgba(239,68,68,0.7)', borderColor: '#ef4444', borderWidth: 1,
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: { legend: { labels: { color: '#94a3b8', font: { size: 12 } } } },
+                        scales: {
+                            x: { ticks: { color: '#64748b' }, grid: { color: '#1e293b' } },
+                            y: { ticks: { color: '#64748b' }, grid: { color: '#1e293b' } }
+                        }
                     }
-                ]
-            },
-            options: {
-                responsive: true, maintainAspectRatio: false,
-                plugins: { legend: { labels: { color: '#94a3b8' } } },
-                scales: {
-                    x: { ticks: { color: '#64748b' }, grid: { color: '#1e293b' } },
-                    y: { ticks: { color: '#64748b' }, grid: { color: '#1e293b' } }
-                }
+                });
             }
-        });
+        }
     }
-}
+
+    // Setup button
+    const btn = document.getElementById('compareBtn');
+    if (btn) {
+        btn.addEventListener('click', window.runComparison);
+        console.log('Button listener attached');
+    }
+
+    // Auto-run if URL has ids
+    const preIds = new URLSearchParams(window.location.search).get('ids');
+    if (preIds) {
+        const parts = preIds.split(',');
+        if (parts[0]) document.getElementById('countryA').value = parts[0];
+        if (parts[1]) document.getElementById('countryB').value = parts[1];
+        if (parts[0] && parts[1]) setTimeout(window.runComparison, 300);
+    }
+
+    console.log('=== COMPARE PAGE READY ===');
+})();
 </script>
-@endpush
+
+@endsection

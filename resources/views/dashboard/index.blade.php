@@ -275,7 +275,8 @@ px-3 py-1 rounded-full text-sm font-semibold
 
 {{-- INLINE SCRIPTS - Execute immediately after DOM elements exist --}}
 <script>
-(function() {
+// Fungsi untuk initialize map - dipanggil setelah Leaflet ready
+function initializeMap() {
     console.log('=== INLINE SCRIPT START ===');
     console.log('Leaflet available:', typeof L !== 'undefined');
     console.log('Chart available:', typeof Chart !== 'undefined');
@@ -474,7 +475,28 @@ px-3 py-1 rounded-full text-sm font-semibold
     } else {
         console.error('Leaflet library not available!');
     }
-})();
+}
+
+// Check if Leaflet is already loaded
+if (typeof L !== 'undefined') {
+    console.log('Leaflet already loaded, initializing immediately');
+    initializeMap();
+} else {
+    console.log('Waiting for Leaflet to load...');
+    // Poll untuk Leaflet sampai 5 detik
+    let leafletCheckCount = 0;
+    const leafletCheckInterval = setInterval(function() {
+        leafletCheckCount++;
+        if (typeof L !== 'undefined') {
+            console.log('Leaflet loaded after', leafletCheckCount * 100, 'ms');
+            clearInterval(leafletCheckInterval);
+            initializeMap();
+        } else if (leafletCheckCount > 50) {
+            console.error('Leaflet failed to load after 5 seconds');
+            clearInterval(leafletCheckInterval);
+        }
+    }, 100);
+}
 </script>
 
 @endsection

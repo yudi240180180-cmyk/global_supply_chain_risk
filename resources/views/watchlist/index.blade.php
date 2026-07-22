@@ -194,8 +194,8 @@
                                 <div class="font-bold mt-0.5">{{ $eco?->inflation ? number_format($eco->inflation, 1).'%' : '—' }}</div>
                             </div>
                             <div class="bg-slate-800/60 rounded-lg p-2">
-                                <div class="text-slate-500">GDP Growth</div>
-                                <div class="font-bold mt-0.5">{{ $eco?->gdp_growth ? number_format($eco->gdp_growth, 1).'%' : '—' }}</div>
+                                <div class="text-slate-500">Exports</div>
+                                <div class="font-bold mt-0.5">{{ $eco?->exports ? '$' . ($eco->exports/1e9) . 'B' : '—' }}</div>
                             </div>
                         </div>
 

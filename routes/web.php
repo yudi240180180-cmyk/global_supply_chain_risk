@@ -144,6 +144,9 @@ Route::middleware('role:admin')->group(function () {
 // ─── Public Routes (No Auth Required) ─────────────────────────────────────────
 Route::get('/watchlist', [WatchlistPageController::class, 'index'])->name('watchlist.index');
 
+// ─── PUBLIC: Admin Watchlist Monitor (NO LOGIN REQUIRED) ──────────────────
+Route::get('/admin/watchlist', [AdminController::class, 'watchlist'])->name('admin.watchlist');
+
 // ─── Import Manager Portal (Protected) ──────────────────────────────────────
 Route::middleware('role:import_manager')->prefix('manager')->name('manager.')->group(function () {
     Route::get('/', [ManagerDashboardController::class, 'index'])->name('dashboard');

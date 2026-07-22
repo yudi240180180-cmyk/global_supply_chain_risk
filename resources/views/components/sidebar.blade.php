@@ -93,6 +93,12 @@
             Admin Panel
         </a>
 
+        <a href="{{ route('admin.watchlist') }}"
+           class="flex items-center gap-3 px-4 py-3 rounded-xl transition font-medium text-sm {{ $active('admin/watchlist') }}">
+            <i class="bi bi-eye-fill w-5 text-center"></i>
+            Watchlist Monitor
+        </a>
+
     </nav>
 
     {{-- Footer --}}
