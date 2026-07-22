@@ -157,6 +157,10 @@
 
 @push('scripts')
 <script>
+// Wrap in DOMContentLoaded to ensure Leaflet is ready
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('Weather: Initializing weather map...');
+    
 // ── Weather Map ──────────────────────────────────────────────────────────────
 const weatherMap = L.map('weatherMap', { worldCopyJump: true }).setView([20, 0], 2);
 setTimeout(() => { weatherMap.invalidateSize(); }, 300);
@@ -199,5 +203,7 @@ document.getElementById('weatherSearch').addEventListener('input', function() {
         row.style.display = row.dataset.name.includes(q) ? '' : 'none';
     });
 });
+
+}); // End DOMContentLoaded
 </script>
 @endpush

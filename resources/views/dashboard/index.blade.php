@@ -278,7 +278,11 @@ px-3 py-1 rounded-full text-sm font-semibold
 @push('scripts')
 
 <script>
-   const ctx = document.getElementById('riskChart');
+// Wrap everything in DOMContentLoaded to ensure Leaflet is ready
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('Dashboard: Initializing charts and maps...');
+    
+    const ctx = document.getElementById('riskChart');
 
 if (ctx && typeof Chart !== 'undefined') {
 
@@ -626,6 +630,8 @@ legend.onAdd = function () {
 };
 
 legend.addTo(map);
+
+}); // End DOMContentLoaded
 </script>
 
 @endpush

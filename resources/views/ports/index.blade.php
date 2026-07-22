@@ -94,6 +94,10 @@
 
 @push('scripts')
 <script>
+// Wrap in DOMContentLoaded to ensure Leaflet is ready
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('Ports: Initializing port map...');
+    
 // ── Map Init ─────────────────────────────────────────────────────────────────
 const portMap = L.map('portMap', { worldCopyJump: true }).setView([20, 0], 2);
 setTimeout(() => { portMap.invalidateSize(); }, 300);
@@ -181,5 +185,7 @@ function clearPortFilters() {
 
 portSearchEl.addEventListener('input', filterPorts);
 countryFilterEl.addEventListener('change', filterPorts);
+
+}); // End DOMContentLoaded
 </script>
 @endpush

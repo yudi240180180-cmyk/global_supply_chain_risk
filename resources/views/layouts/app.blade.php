@@ -100,6 +100,20 @@ href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.c
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
 
+<script>
+// Wait for Leaflet to be fully loaded before executing page scripts
+if (typeof L === 'undefined') {
+    console.error('Leaflet not loaded!');
+} else {
+    console.log('Leaflet loaded successfully, version:', L.version);
+}
+
+// Ensure DOM is ready
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('DOM ready, initializing maps...');
+});
+</script>
+
 @stack('scripts')
 
 </body>
