@@ -278,8 +278,8 @@ px-3 py-1 rounded-full text-sm font-semibold
 @push('scripts')
 
 <script>
-// Wrap everything in DOMContentLoaded to ensure Leaflet is ready
-document.addEventListener('DOMContentLoaded', function() {
+// Execute immediately or wait for DOMContentLoaded
+function initDashboard() {
     console.log('Dashboard: Initializing charts and maps...');
     
     const ctx = document.getElementById('riskChart');
@@ -631,7 +631,15 @@ legend.onAdd = function () {
 
 legend.addTo(map);
 
-}); // End DOMContentLoaded
+} // End initDashboard
+
+// Check if DOM is already loaded or wait for it
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initDashboard);
+} else {
+    // DOM already loaded, execute immediately
+    initDashboard();
+}
 </script>
 
 @endpush

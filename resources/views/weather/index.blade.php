@@ -157,8 +157,8 @@
 
 @push('scripts')
 <script>
-// Wrap in DOMContentLoaded to ensure Leaflet is ready
-document.addEventListener('DOMContentLoaded', function() {
+// Execute immediately or wait for DOMContentLoaded
+function initWeatherMap() {
     console.log('Weather: Initializing weather map...');
     
 // ── Weather Map ──────────────────────────────────────────────────────────────
@@ -204,6 +204,14 @@ document.getElementById('weatherSearch').addEventListener('input', function() {
     });
 });
 
-}); // End DOMContentLoaded
+} // End initWeatherMap
+
+// Check if DOM is already loaded or wait for it
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initWeatherMap);
+} else {
+    // DOM already loaded, execute immediately
+    initWeatherMap();
+}
 </script>
 @endpush

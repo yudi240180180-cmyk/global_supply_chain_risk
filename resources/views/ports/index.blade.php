@@ -94,8 +94,8 @@
 
 @push('scripts')
 <script>
-// Wrap in DOMContentLoaded to ensure Leaflet is ready
-document.addEventListener('DOMContentLoaded', function() {
+// Execute immediately or wait for DOMContentLoaded
+function initPortMap() {
     console.log('Ports: Initializing port map...');
     
 // ── Map Init ─────────────────────────────────────────────────────────────────
@@ -186,6 +186,14 @@ function clearPortFilters() {
 portSearchEl.addEventListener('input', filterPorts);
 countryFilterEl.addEventListener('change', filterPorts);
 
-}); // End DOMContentLoaded
+} // End initPortMap
+
+// Check if DOM is already loaded or wait for it
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initPortMap);
+} else {
+    // DOM already loaded, execute immediately
+    initPortMap();
+}
 </script>
 @endpush
